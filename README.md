@@ -5,19 +5,21 @@
 [![Alya](https://img.shields.io/badge/dynamic/toml?url=https%3A%2F%2Fraw.githubusercontent.com%2Falya-lang%2Fregex%2Fmain%2Falya.toml&query=%24.package.alya-version&label=Alya&color=orange&prefix=%3E%3D)](https://github.com/alya-lang/alya)
 [![Package Version](https://img.shields.io/badge/dynamic/toml?url=https%3A%2F%2Fraw.githubusercontent.com%2Falya-lang%2Fregex%2Fmain%2Falya.toml&query=%24.package.version&label=Version&color=brightgreen)](alya.toml)
 
-High-performance, pure Alya regular expression engine with linear-time matching, named capture groups, lookarounds, backreferences, Unicode property classes, and Turkish case-folding.
+High-performance, pure Alya regular expression engine with linear-time matching, named capture groups, lookarounds, backreferences, Unicode property classes, and global multilingual case-folding (Latin Extended, Cyrillic, Greek, Turkish, etc.).
 
 ---
 
 ## 🌟 Features
 
 - ⚡ **Pure Alya & Fast**: Zero external C dependencies; compiles directly with `alyac` to native machine code (>190,000 matches/sec).
+- 🌍 **Global Multilingual & Unicode**:
+  - **Universal Case-Folding (`"i"` flag)**: Full bidirectional case-folding for German (`ä, ö, ü, ß`), French (`é, è, ê, à, ç`), Spanish (`ñ, á, é, í, ó`), Cyrillic / Russian (`А-Я` ↔ `а-я`), Greek (`Α-Ω` ↔ `α-ω`), Polish/Czech (`ł, ś, ź, ż, ć, č`), Scandinavian (`å, æ, ø`), and Turkish (`ç, ğ, ı, i, ö, ş, ü` ↔ `Ç, Ğ, I, İ, Ö, Ş, Ü`).
+  - **Non-Cased Scripts**: Native UTF-8 matching for Chinese, Japanese, Korean, Arabic, Hebrew, Devanagari, etc.
+  - **Unicode Property Classes**: `\p{L}` / `\p{Letter}` (letters across all Unicode blocks), `\p{N}` / `\p{Number}` (numeric digits).
 - 🎯 **Comprehensive Pattern Syntax**:
   - **Literals & Escapes**: `\.`, `\\`, `\+`, `\*`, `\?`, `\^`, `\$`, `\(`, `\)`, `\[`, `\]`, `\{`, `\}`, `\|`, `\n`, `\r`, `\t`, `\0`.
   - **Hex & Unicode Escapes**: `\xHH` (e.g. `\x41`), `\uHHHH` (e.g. `\u0041`), hex ranges in character classes `[\x30-\x39]`.
   - **Character Classes**: Shorthands (`\d`, `\D`, `\w`, `\W`, `\s`, `\S`), custom ranges (`[a-z]`, `[0-9A-Fa-f]`, `[^0-9]`), negated classes.
-  - **Unicode Property Classes**: `\p{L}` / `\p{Letter}` (letters including UTF-8 extended Latin), `\p{N}` / `\p{Number}` (digits).
-  - **Turkish Case-Folding**: Full bidirectional case-folding under the `"i"` flag for Turkish characters (`ç`, `ğ`, `ı`, `i`, `ö`, `ş`, `ü` ↔ `Ç`, `Ğ`, `I`, `İ`, `Ö`, `Ş`, `Ü`).
   - **Anchors & Word Boundaries**: Line start `^`, line end `$`, word boundaries `\b`, non-word boundaries `\B`.
   - **Quantifiers**: Greedy (`*`, `+`, `?`, `{n}`, `{n,}`, `{min,max}`) and lazy modes (`*?`, `+?`, `??`).
   - **Alternation**: Multi-branch choices (`cat|dog|fish`).
@@ -31,7 +33,7 @@ High-performance, pure Alya regular expression engine with linear-time matching,
   - **Backreferences**: Numbered backreferences `\1` through `\9`, and named backreferences `\k<name>`.
   - **Replacement Placeholders**: Numbered placeholders (`$0`, `$1`..`$9`) and named placeholders (`${name}`, `$<name>`).
 - 🚩 **Standard Flags**:
-  - `i`: Case-insensitive matching (with full UTF-8 and Turkish case-folding).
+  - `i`: Case-insensitive matching (with global multilingual UTF-8 case-folding).
   - `m`: Multiline mode (`^` and `$` match line starts and line ends).
   - `s`: Dotall mode (`.` matches newline `\n`).
 - 🛠️ **Full Toolkit**: Pre-compilation (`compile`), one-liners (`test`, `find_pattern`), replacements (`replace`, `replace_all`), token splitting (`split`), and metacharacter escaping (`escape`).
@@ -55,7 +57,8 @@ regex/
 │   └── demo.alya           # Real-world usage demonstrations (9 feature categories)
 ├── tests/
 │   ├── test_basic.alya     # Standard test suite (53 assertions)
-│   └── test_advanced.alya  # Advanced features test suite (38 assertions)
+│   ├── test_advanced.alya  # Advanced features test suite (38 assertions)
+│   └── test_multilang.alya # Global multilingual & Unicode suite (19 assertions)
 └── benches/
     └── bench_basic.alya    # Micro-benchmarking suite
 ```

@@ -90,29 +90,79 @@ function is_space_char(ch)
     return 0
 end
 
-# Converts character code to lowercase with extended Latin and Turkish support
+# Converts single-byte ASCII character code to lowercase [A-Z] -> [a-z]
 function to_lower_code(code)
     if code >= 65 and code <= 90
         return code + 32
     end
-    # Turkish UTF-8 second byte mappings:
-    # Ş ([197, 158]) -> ş ([197, 159])
-    # Ğ ([196, 158]) -> ğ ([196, 159])
-    if code == 158 return 159 end
-    # Ç ([195, 135]) -> ç ([195, 167])
-    if code == 135 return 167 end
-    # Ö ([195, 150]) -> ö ([195, 182])
-    if code == 150 return 182 end
-    # Ü ([195, 156]) -> ü ([195, 188])
-    if code == 156 return 188 end
-    # Latin-1 single-byte mappings (if text is 8-bit encoded)
-    if code >= 192 and code <= 214
-        return code + 32
-    end
-    if code >= 216 and code <= 222
-        return code + 32
-    end
     return code
+end
+
+# Takes a 2-byte UTF-8 sequence [b1, b2] and returns the lowercase [b1_low, b2_low]
+function to_lower_utf8_pair(b1, b2)
+    # Latin-1 Supplement (0xC3 = 195) - French, German, Spanish, Scandinavian, Portuguese...
+    # Ä/ä (132->164), É/é (137->169), Ñ/ñ (145->177), Ö/ö (150->182), Ü/ü (156->188), Ç/ç (135->167)...
+    if b1 == 195
+        if b2 >= 128 and b2 <= 158 and b2 != 151
+            return [195, b2 + 32]
+        end
+        return [b1, b2]
+    end
+
+    # Latin Extended-A (0xC4 = 196) - Turkish Ğ, İ, Polish/Czech/Hungarian/Baltic...
+    if b1 == 196
+        if b2 == 158 return [196, 159] end # Ğ -> ğ
+        if b2 == 176 return [105, -1] end  # İ -> i (becomes 1-byte ASCII)
+        if (b2 % 2 == 0) and b2 >= 128 and b2 <= 174
+            return [196, b2 + 1] # Ā->ā, Ć->ć, Č->č, Ď->ď...
+        end
+        return [b1, b2]
+    end
+
+    # Latin Extended-A (0xC5 = 197) - Turkish Ş, Polish Ł, Ś, Ž...
+    if b1 == 197
+        if b2 == 158 return [197, 159] end # Ş -> ş
+        if (b2 % 2 == 1) and b2 >= 129 and b2 <= 147
+            return [197, b2 + 1] # Ł->ł, Ń->ń, Ň->ň...
+        end
+        if (b2 % 2 == 0) and b2 >= 160 and b2 <= 190 and (b2 < 185 or b2 > 188)
+            return [197, b2 + 1] # Š->š, Ť->ť, Ž->ž...
+        end
+        if (b2 % 2 == 1) and b2 >= 185 and b2 <= 188
+            return [197, b2 + 1] # Ź->ź (185->186), Ż->ż (187->188)
+        end
+        return [b1, b2]
+    end
+
+    # Cyrillic (0xD0 = 208, 0xD1 = 209) - Russian, Ukrainian, Bulgarian, Serbian
+    if b1 == 208
+        if b2 >= 144 and b2 <= 159
+            return [208, b2 + 32] # А-П -> а-п
+        elif b2 >= 160 and b2 <= 175
+            return [209, b2 - 32] # Р-Я -> р-я
+        elif b2 == 129
+            return [209, 145]     # Ё -> ё
+        elif b2 == 132
+            return [209, 148]     # Є -> є
+        elif b2 == 134
+            return [209, 150]     # І -> і
+        elif b2 == 135
+            return [209, 151]     # Ї -> ї
+        end
+        return [b1, b2]
+    end
+
+    # Greek (0xCE = 206, 0xCF = 207)
+    if b1 == 206
+        if b2 >= 145 and b2 <= 159
+            return [206, b2 + 32] # Α-Ο -> α-ο
+        elif b2 >= 160 and b2 <= 169
+            return [207, b2 - 32] # Π-Ω -> π-ω
+        end
+        return [b1, b2]
+    end
+
+    return [b1, b2]
 end
 
 # Converts a single character to lowercase
@@ -126,14 +176,92 @@ function to_lower_char(ch)
     return ch
 end
 
-# Converts an entire string to lowercase
+# Converts an entire string to lowercase (supporting ASCII, Latin Extended, Cyrillic, Greek, etc.)
 function to_lower_string(s)
     let slen = len(s)
     let res = ""
     let i = 0
     while i < slen
-        res += to_lower_char(char_at(s, i))
-        i += 1
+        let b1 = ord(char_at(s, i))
+        if b1 < 128
+            # ASCII [A-Z] -> [a-z]
+            if b1 >= 65 and b1 <= 90
+                res += chr(b1 + 32)
+            else
+                res += char_at(s, i)
+            end
+            i += 1
+        elif b1 == 195 and i + 1 < slen
+            # Latin-1 Supplement (0xC3) - French, German, Spanish, Scandinavian...
+            let b2 = ord(char_at(s, i + 1))
+            if b2 >= 128 and b2 <= 158 and b2 != 151
+                res += chr(195) + chr(b2 + 32)
+            else
+                res += char_at(s, i) + char_at(s, i + 1)
+            end
+            i += 2
+        elif b1 == 196 and i + 1 < slen
+            # Latin Extended-A (0xC4) - Turkish Ğ, İ and Polish/Czech...
+            let b2 = ord(char_at(s, i + 1))
+            if b2 == 158
+                res += chr(196) + chr(159) # Ğ -> ğ
+            elif b2 == 176
+                res += "i" # İ -> i
+            elif (b2 % 2 == 0) and b2 >= 128 and b2 <= 174
+                res += chr(196) + chr(b2 + 1) # Ā->ā, Ć->ć, Č->č, Ď->ď...
+            else
+                res += char_at(s, i) + char_at(s, i + 1)
+            end
+            i += 2
+        elif b1 == 197 and i + 1 < slen
+            # Latin Extended-A (0xC5) - Turkish Ş, Polish Ł, Ś, Ž...
+            let b2 = ord(char_at(s, i + 1))
+            if b2 == 158
+                res += chr(197) + chr(159) # Ş -> ş
+            elif (b2 % 2 == 1) and b2 >= 129 and b2 <= 147
+                res += chr(197) + chr(b2 + 1) # Ł->ł, Ń->ń, Ň->ň...
+            elif (b2 % 2 == 0) and b2 >= 160 and b2 <= 190
+                res += chr(197) + chr(b2 + 1) # Š->š, Ť->ť, Ž->ž...
+            elif b2 >= 185 and b2 <= 188 and (b2 % 2 == 1)
+                res += chr(197) + chr(b2 + 1) # Ź->ź, Ż->ż
+            else
+                res += char_at(s, i) + char_at(s, i + 1)
+            end
+            i += 2
+        elif b1 == 208 and i + 1 < slen
+            # Cyrillic part 1 (0xD0) - Russian, Ukrainian, Bulgarian, Serbian
+            let b2 = ord(char_at(s, i + 1))
+            if b2 >= 144 and b2 <= 159
+                res += chr(208) + chr(b2 + 32) # А-П -> а-п
+            elif b2 >= 160 and b2 <= 175
+                res += chr(209) + chr(b2 - 32) # Р-Я -> р-я
+            elif b2 == 129
+                res += chr(209) + chr(145) # Ё -> ё
+            elif b2 == 132
+                res += chr(209) + chr(148) # Є -> є
+            elif b2 == 134
+                res += chr(209) + chr(150) # І -> і
+            elif b2 == 135
+                res += chr(209) + chr(151) # Ї -> ї
+            else
+                res += char_at(s, i) + char_at(s, i + 1)
+            end
+            i += 2
+        elif b1 == 206 and i + 1 < slen
+            # Greek part 1 (0xCE)
+            let b2 = ord(char_at(s, i + 1))
+            if b2 >= 145 and b2 <= 159
+                res += chr(206) + chr(b2 + 32) # Α-Ο -> α-ο
+            elif b2 >= 160 and b2 <= 169
+                res += chr(207) + chr(b2 - 32) # Π-Ω -> π-ω
+            else
+                res += char_at(s, i) + char_at(s, i + 1)
+            end
+            i += 2
+        else
+            res += char_at(s, i)
+            i += 1
+        end
     end
     return res
 end

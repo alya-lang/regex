@@ -26,11 +26,23 @@ function _vm_step(code, pc, text, pos, text_len, slots, flag_i, flag_m, flag_s, 
     if op == op_char_ci()
         if pos >= text_len return null end
         let b0 = ord(char_at(text, pos))
-        # Handle Turkish İ (UTF-8 [196, 176]) matching lowercase 'i' (105)
-        if inst.arg1 == 105 and b0 == 196
-            if pos + 1 < text_len
-                if ord(char_at(text, pos + 1)) == 176
+        # Handle 2-byte UTF-8 sequences (Turkish, Latin-1, Cyrillic, Greek, Polish, etc.)
+        if b0 >= 192 and b0 <= 223 and pos + 1 < text_len
+            let b1 = ord(char_at(text, pos + 1))
+            let pair = to_lower_utf8_pair(b0, b1)
+            # Case 1: Mapped to single-byte ASCII (e.g. Turkish uppercase İ [196, 176] -> lowercase 'i' [105])
+            if pair[1] == -1
+                if inst.arg1 == pair[0]
                     return _vm_step(code, pc + 1, text, pos + 2, text_len, slots, flag_i, flag_m, flag_s, counter)
+                end
+            end
+            # Case 2: 2-byte sequence match
+            if inst.arg1 == pair[0]
+                if pc + 1 < len(code)
+                    let next_inst = code[pc + 1]
+                    if next_inst.op == op_char_ci() and next_inst.arg1 == pair[1]
+                        return _vm_step(code, pc + 2, text, pos + 2, text_len, slots, flag_i, flag_m, flag_s, counter)
+                    end
                 end
             end
         end

@@ -1,0 +1,68 @@
+import "std/test"
+import "../src/lib.alya" as re
+
+function main()
+    test_suite("regex Global Multilingual & Unicode Test Suite")
+    let r = runner_new()
+
+    # 1. German (Almanca: ä, ö, ü, ß)
+    let r_de1 = re::compile("münchen", "i")
+    runner_assert_eq(r, re::is_match(r_de1, "Willkommen in MÜNCHEN!"), 1, "German München == MÜNCHEN")
+    let r_de2 = re::compile("äpfel", "i")
+    runner_assert_eq(r, re::is_match(r_de2, "Frische ÄPFEL im Markt"), 1, "German Äpfel == äpfel")
+    let r_de3 = re::compile("Österreich", "i")
+    runner_assert_eq(r, re::is_match(r_de3, "Reise nach österreich"), 1, "German Österreich == österreich")
+
+    # 2. French (Fransızca: é, è, ê, à, ç)
+    let r_fr1 = re::compile("français", "i")
+    runner_assert_eq(r, re::is_match(r_fr1, "Parlez-vous FRANÇAIS?"), 1, "French français == FRANÇAIS")
+    let r_fr2 = re::compile("été", "i")
+    runner_assert_eq(r, re::is_match(r_fr2, "Bel ÉTÉ à Paris"), 1, "French été == ÉTÉ")
+    let r_fr3 = re::compile("noël", "i")
+    runner_assert_eq(r, re::is_match(r_fr3, "Joyeux NOËL"), 1, "French noël == NOËL")
+
+    # 3. Spanish (İspanyolca: ñ, á, é, í, ó, ú)
+    let r_es1 = re::compile("españa", "i")
+    runner_assert_eq(r, re::is_match(r_es1, "Viva ESPAÑA!"), 1, "Spanish españa == ESPAÑA")
+    let r_es2 = re::compile("año", "i")
+    runner_assert_eq(r, re::is_match(r_es2, "Feliz AÑO nuevo"), 1, "Spanish año == AÑO")
+
+    # 4. Cyrillic / Russian (Rusça / Kiril: А-Я <-> а-я)
+    let r_ru1 = re::compile("москва", "i")
+    runner_assert_eq(r, re::is_match(r_ru1, "Город МОСКВА столица"), 1, "Russian москва == МОСКВА")
+    let r_ru2 = re::compile("привет", "i")
+    runner_assert_eq(r, re::is_match(r_ru2, "ПРИВЕТ мир"), 1, "Russian привет == ПРИВЕТ")
+    let r_ru3 = re::compile("РОССИЯ", "i")
+    runner_assert_eq(r, re::is_match(r_ru3, "Великая россия"), 1, "Russian РОССИЯ == россия")
+
+    # 5. Greek (Yunanca: Α-Ω <-> α-ω)
+    let r_gr1 = re::compile("αθηνα", "i")
+    runner_assert_eq(r, re::is_match(r_gr1, "Πρωτεύουσα ΑΘΗΝΑ"), 1, "Greek αθηνα == ΑΘΗΝΑ")
+    let r_gr2 = re::compile("ΕΛΛΑΣ", "i")
+    runner_assert_eq(r, re::is_match(r_gr2, "Ζήτω η ελλασ"), 1, "Greek ΕΛΛΑΣ == ελλασ")
+
+    # 6. Polish / Czech (Lehçe / Çekçe: ł, ś, ź, ż, ć, č)
+    let r_pl1 = re::compile("kraków", "i")
+    runner_assert_eq(r, re::is_match(r_pl1, "Miasto KRAKÓW"), 1, "Polish kraków == KRAKÓW")
+    let r_pl2 = re::compile("łódź", "i")
+    runner_assert_eq(r, re::is_match(r_pl2, "W ŁÓDŹ mieszkam"), 1, "Polish łódź == ŁÓDŹ")
+
+    # 7. Scandinavian (İskandinav dilleri: å, æ, ø)
+    let r_scan1 = re::compile("københavn", "i")
+    runner_assert_eq(r, re::is_match(r_scan1, "Velkommen til KØBENHAVN"), 1, "Danish københavn == KØBENHAVN")
+
+    # 8. Non-cased alphabets (CJK, Arabic, Hebrew)
+    let r_zh = re::compile("你好世界")
+    runner_assert_eq(r, re::is_match(r_zh, "在这里说你好世界！"), 1, "Chinese matching")
+    let r_ja = re::compile("こんにちは|東京")
+    runner_assert_eq(r, re::is_match(r_ja, "日本の東京に行きます"), 1, "Japanese matching")
+    let r_ar = re::compile("مرحبا")
+    runner_assert_eq(r, re::is_match(r_ar, "مرحبا بالعالم"), 1, "Arabic matching")
+
+    let failed = runner_summary(r)
+    if failed > 0
+        exit(1)
+    end
+end
+
+main()

@@ -229,10 +229,17 @@ function _p_parse_atom(p)
     _p_next(p)
     let code = ord(ch)
     if p.flag_i == 1
-        if code == 196 and _p_has_more(p)
-            if ord(_p_peek(p)) == 176
-                _p_next(p)
-                code = 105
+        if code >= 192 and code <= 223 and _p_has_more(p)
+            let b2 = ord(_p_peek(p))
+            let pair = to_lower_utf8_pair(code, b2)
+            _p_next(p)
+            if pair[1] == -1
+                return ast_node_new(ast_kind_literal(), pair[0])
+            else
+                return ast_node_new(ast_kind_concat(), 0, 0, null, [
+                    ast_node_new(ast_kind_literal(), pair[0]),
+                    ast_node_new(ast_kind_literal(), pair[1])
+                ])
             end
         end
         code = to_lower_code(code)
