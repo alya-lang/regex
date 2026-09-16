@@ -2,7 +2,7 @@
 # Part of the Alya Language package ecosystem (https://github.com/alya-lang)
 
 # Checks if a single character is an ASCII letter [a-zA-Z]
-function is_ascii_letter(ch)
+pub function is_ascii_letter(ch)
     if len(ch) == 0 return 0 end
     let c = ord(ch)
     if (c >= 65 and c <= 90) or (c >= 97 and c <= 122)
@@ -12,7 +12,7 @@ function is_ascii_letter(ch)
 end
 
 # Checks if a single character is an ASCII digit [0-9]
-function is_digit(ch)
+pub function is_digit(ch)
     if len(ch) == 0 return 0 end
     let c = ord(ch)
     if c >= 48 and c <= 57
@@ -22,7 +22,7 @@ function is_digit(ch)
 end
 
 # Checks if a single character is a hexadecimal digit [0-9a-fA-F]
-function is_hex_digit(ch)
+pub function is_hex_digit(ch)
     if len(ch) == 0 return 0 end
     let c = ord(ch)
     if (c >= 48 and c <= 57) or (c >= 65 and c <= 70) or (c >= 97 and c <= 102)
@@ -32,7 +32,7 @@ function is_hex_digit(ch)
 end
 
 # Returns numeric integer value of a hexadecimal character
-function hex_char_val(ch)
+pub function hex_char_val(ch)
     if len(ch) == 0 return 0 end
     let c = ord(ch)
     if c >= 48 and c <= 57
@@ -46,7 +46,7 @@ function hex_char_val(ch)
 end
 
 # Converts a Unicode code point to a list of UTF-8 byte integers
-function codepoint_to_utf8(cp)
+pub function codepoint_to_utf8(cp)
     if cp < 128
         return [cp]
     elif cp < 2048
@@ -66,7 +66,7 @@ function codepoint_to_utf8(cp)
 end
 
 # Checks if a character is a word character [a-zA-Z0-9_]
-function is_word_char(ch)
+pub function is_word_char(ch)
     if len(ch) == 0 return 0 end
     let c = ord(ch)
     if (c >= 48 and c <= 57) or (c >= 65 and c <= 90) or (c >= 97 and c <= 122) or c == 95
@@ -80,7 +80,7 @@ function is_word_char(ch)
 end
 
 # Checks if a character is a whitespace character [\s]
-function is_space_char(ch)
+pub function is_space_char(ch)
     if len(ch) == 0 return 0 end
     let c = ord(ch)
     # space (32), tab (9), newline (10), carriage return (13), form feed (12), vertical tab (11)
@@ -91,7 +91,7 @@ function is_space_char(ch)
 end
 
 # Converts single-byte ASCII character code to lowercase [A-Z] -> [a-z]
-function to_lower_code(code)
+pub function to_lower_code(code)
     if code >= 65 and code <= 90
         return code + 32
     end
@@ -99,7 +99,7 @@ function to_lower_code(code)
 end
 
 # Takes a 2-byte UTF-8 sequence [b1, b2] and returns the lowercase [b1_low, b2_low]
-function to_lower_utf8_pair(b1, b2)
+pub function to_lower_utf8_pair(b1, b2)
     # Latin-1 Supplement (0xC3 = 195) - French, German, Spanish, Scandinavian, Portuguese...
     # Ä/ä (132->164), É/é (137->169), Ñ/ñ (145->177), Ö/ö (150->182), Ü/ü (156->188), Ç/ç (135->167)...
     if b1 == 195
@@ -166,7 +166,7 @@ function to_lower_utf8_pair(b1, b2)
 end
 
 # Converts a single character to lowercase
-function to_lower_char(ch)
+pub function to_lower_char(ch)
     if len(ch) == 0 return "" end
     let c = ord(ch)
     let lc = to_lower_code(c)
@@ -177,7 +177,7 @@ function to_lower_char(ch)
 end
 
 # Converts an entire string to lowercase (supporting ASCII, Latin Extended, Cyrillic, Greek, etc.)
-function to_lower_string(s)
+pub function to_lower_string(s)
     let slen = len(s)
     let res = ""
     let i = 0
@@ -267,7 +267,7 @@ function to_lower_string(s)
 end
 
 # Checks if a position in text matches word boundary \b or \B
-function check_word_boundary(text, pos, text_len, is_positive)
+pub function check_word_boundary(text, pos, text_len, is_positive)
     let before_word = 0
     let after_word = 0
     if pos > 0
@@ -292,7 +292,7 @@ function check_word_boundary(text, pos, text_len, is_positive)
 end
 
 # Escapes all regular expression meta-characters in a literal string
-function escape_pattern(str_val)
+pub function escape_pattern(str_val)
     let slen = len(str_val)
     let res = ""
     let i = 0

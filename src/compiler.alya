@@ -12,7 +12,7 @@ struct CompilerState
     flag_s
 end
 
-function compiler_state_new(flag_i = 0, flag_m = 0, flag_s = 0)
+pub function compiler_state_new(flag_i = 0, flag_m = 0, flag_s = 0)
     return CompilerState {
         instructions: [],
         flag_i: flag_i,
@@ -21,25 +21,25 @@ function compiler_state_new(flag_i = 0, flag_m = 0, flag_s = 0)
     }
 end
 
-function _c_emit(c, inst)
+pub function _c_emit(c, inst)
     c.instructions.push(inst)
     return len(c.instructions) - 1
 end
 
-function _c_pc(c)
+pub function _c_pc(c)
     return len(c.instructions)
 end
 
-function _c_patch_arg1(c, pc, target)
+pub function _c_patch_arg1(c, pc, target)
     c.instructions[pc].arg1 = target
 end
 
-function _c_patch_arg2(c, pc, target)
+pub function _c_patch_arg2(c, pc, target)
     c.instructions[pc].arg2 = target
 end
 
-function _c_compile_node(c, node)
-    if node == null return 0 end
+pub function _c_compile_node(c, node)
+    if node is null return 0 end
     let kind = node.kind
 
     if kind == ast_kind_empty()
@@ -221,9 +221,9 @@ function _c_compile_node(c, node)
 end
 
 # Checks if root AST node is anchored to start of string
-function _check_is_anchored(ast, flag_m)
+pub function _check_is_anchored(ast, flag_m)
     if flag_m == 1 return 0 end
-    if ast == null return 0 end
+    if ast is null return 0 end
     if ast.kind == ast_kind_anchor_start() return 1 end
     if ast.kind == ast_kind_concat() and len(ast.children) > 0
         if ast.children[0].kind == ast_kind_anchor_start()
@@ -234,8 +234,8 @@ function _check_is_anchored(ast, flag_m)
 end
 
 # Extracts literal prefix for fast scan optimization
-function _extract_literal_prefix(ast, flag_i)
-    if ast == null return "" end
+pub function _extract_literal_prefix(ast, flag_i)
+    if ast is null return "" end
     let prefix = ""
     let nodes = []
     if ast.kind == ast_kind_concat()
@@ -264,7 +264,7 @@ function _extract_literal_prefix(ast, flag_i)
 end
 
 # Compiles regex pattern into a Regex struct
-function compile_regex(pattern, flags = "")
+pub function compile_regex(pattern, flags = "")
     let parsed = parse_regex_ast(pattern, flags)
     let ast = parsed[0]
     let group_count = parsed[1]

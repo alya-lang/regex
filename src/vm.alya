@@ -5,7 +5,7 @@ import "./types.alya"
 import "./utils.alya"
 
 # Evaluates instruction step with backtracking
-function _vm_step(code, pc, text, pos, text_len, slots, flag_i, flag_m, flag_s, counter)
+pub function _vm_step(code, pc, text, pos, text_len, slots, flag_i, flag_m, flag_s, counter)
     # Protection against catastrophic backtracking / infinite loops
     counter[0] += 1
     if counter[0] > 1000000
@@ -125,9 +125,9 @@ function _vm_step(code, pc, text, pos, text_len, slots, flag_i, flag_m, flag_s, 
         let sub_slots = [pos, -1]
         let sub_res = _vm_step(inst.inst_sub, 0, text, pos, text_len, sub_slots, flag_i, flag_m, flag_s, [0])
         if is_positive == 1
-            if sub_res == null return null end
+            if sub_res is null return null end
         else
-            if sub_res != null return null end
+            if sub_res is not null return null end
         end
         return _vm_step(code, pc + 1, text, pos, text_len, slots, flag_i, flag_m, flag_s, counter)
     end
@@ -139,7 +139,7 @@ function _vm_step(code, pc, text, pos, text_len, slots, flag_i, flag_m, flag_s, 
         while test_start <= pos
             let sub_slots = [test_start, -1]
             let sub_res = _vm_step(inst.inst_sub, 0, text, test_start, text_len, sub_slots, flag_i, flag_m, flag_s, [0])
-            if sub_res != null
+            if sub_res is not null
                 if sub_res[1] == pos
                     matched = 1
                     break
@@ -172,7 +172,7 @@ function _vm_step(code, pc, text, pos, text_len, slots, flag_i, flag_m, flag_s, 
 
     if op == op_split()
         let res1 = _vm_step(code, inst.arg1, text, pos, text_len, slots, flag_i, flag_m, flag_s, counter)
-        if res1 != null
+        if res1 is not null
             return res1
         end
         return _vm_step(code, inst.arg2, text, pos, text_len, slots, flag_i, flag_m, flag_s, counter)
@@ -183,7 +183,7 @@ function _vm_step(code, pc, text, pos, text_len, slots, flag_i, flag_m, flag_s, 
         let old_val = slots[slot_idx]
         slots[slot_idx] = pos
         let res = _vm_step(code, pc + 1, text, pos, text_len, slots, flag_i, flag_m, flag_s, counter)
-        if res != null
+        if res is not null
             return res
         end
         slots[slot_idx] = old_val
@@ -234,7 +234,7 @@ function _vm_step(code, pc, text, pos, text_len, slots, flag_i, flag_m, flag_s, 
 end
 
 # Executes regex starting exactly at start_pos
-function vm_exec_at(reg, text, start_pos, text_len)
+pub function vm_exec_at(reg, text, start_pos, text_len)
     let num_slots = (reg.num_groups + 1) * 2
     let slots = []
     let i = 0
@@ -247,7 +247,7 @@ function vm_exec_at(reg, text, start_pos, text_len)
     let counter = [0]
     let result_slots = _vm_step(reg.code, 0, text, start_pos, text_len, slots, reg.flag_i, reg.flag_m, reg.flag_s, counter)
 
-    if result_slots == null
+    if result_slots is null
         return null
     end
 
@@ -276,7 +276,7 @@ function vm_exec_at(reg, text, start_pos, text_len)
 end
 
 # Searches for first match in text starting at or after start_index
-function vm_search(reg, text, start_index = 0)
+pub function vm_search(reg, text, start_index = 0)
     let text_len = len(text)
     if start_index > text_len
         return null
@@ -314,7 +314,7 @@ function vm_search(reg, text, start_index = 0)
         end
 
         let m = vm_exec_at(reg, text, pos, text_len)
-        if m != null
+        if m is not null
             return m
         end
         pos += 1
@@ -324,14 +324,14 @@ function vm_search(reg, text, start_index = 0)
 end
 
 # Finds all non-overlapping matches in text
-function vm_find_all(reg, text)
+pub function vm_find_all(reg, text)
     let matches = []
     let text_len = len(text)
     let pos = 0
 
     while pos <= text_len
         let m = vm_search(reg, text, pos)
-        if m == null
+        if m is null
             break
         end
         matches.push(m)
@@ -346,7 +346,7 @@ function vm_find_all(reg, text)
 end
 
 # Expands replacement templates like $0, $1, ${name}, $&, $$
-function _expand_replacement(template_str, m)
+pub function _expand_replacement(template_str, m)
     let tlen = len(template_str)
     let res = ""
     let i = 0
@@ -392,13 +392,13 @@ function _expand_replacement(template_str, m)
 end
 
 # Replaces matched occurrences with replacement template
-function vm_replace(reg, text, replacement, is_all = 1)
+pub function vm_replace(reg, text, replacement, is_all = 1)
     let matches = []
     if is_all == 1
         matches = vm_find_all(reg, text)
     else
         let first_m = vm_search(reg, text, 0)
-        if first_m != null
+        if first_m is not null
             matches.push(first_m)
         end
     end
@@ -431,7 +431,7 @@ function vm_replace(reg, text, replacement, is_all = 1)
 end
 
 # Splits text by regex matches
-function vm_split(reg, text, limit = -1)
+pub function vm_split(reg, text, limit = -1)
     let matches = vm_find_all(reg, text)
     let mcnt = len(matches)
     if mcnt == 0

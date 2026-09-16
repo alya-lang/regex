@@ -17,7 +17,7 @@ struct ParserState
     group_names
 end
 
-function parser_state_new(pattern, flags = "")
+pub function parser_state_new(pattern, flags = "")
     let flag_i = 0
     let flag_m = 0
     let flag_s = 0
@@ -45,18 +45,18 @@ function parser_state_new(pattern, flags = "")
     }
 end
 
-function _p_has_more(p)
+pub function _p_has_more(p)
     return p.pos < p.len
 end
 
-function _p_peek(p)
+pub function _p_peek(p)
     if p.pos < p.len
         return char_at(p.pattern, p.pos)
     end
     return ""
 end
 
-function _p_next(p)
+pub function _p_next(p)
     if p.pos < p.len
         let ch = char_at(p.pattern, p.pos)
         p.pos += 1
@@ -66,7 +66,7 @@ function _p_next(p)
 end
 
 # Parses an alternation (expr | expr | ...)
-function _p_parse_alternation(p)
+pub function _p_parse_alternation(p)
     let branches = []
     branches.push(_p_parse_branch(p))
     while _p_peek(p) == "|"
@@ -80,11 +80,11 @@ function _p_parse_alternation(p)
 end
 
 # Parses a sequence of concatenated elements
-function _p_parse_branch(p)
+pub function _p_parse_branch(p)
     let pieces = []
     while _p_has_more(p) and _p_peek(p) != "|" and _p_peek(p) != ")"
         let atom = _p_parse_atom(p)
-        if atom == null
+        if atom is null
             break
         end
         let piece = _p_parse_quantifier(p, atom)
@@ -100,7 +100,7 @@ function _p_parse_branch(p)
 end
 
 # Parses a single atomic pattern element
-function _p_parse_atom(p)
+pub function _p_parse_atom(p)
     if not _p_has_more(p)
         return null
     end
@@ -248,7 +248,7 @@ function _p_parse_atom(p)
 end
 
 # Parses escape sequence \d, \w, \s, \b, \1..\9, \xHH, \uHHHH, \p{L}, etc.
-function _p_parse_escape(p, esc)
+pub function _p_parse_escape(p, esc)
     # Shorthand character classes
     if esc == "d"
         return ast_node_new(ast_kind_class(), 0, 0, [[48, 57]])
@@ -291,7 +291,7 @@ function _p_parse_escape(p, esc)
             name += _p_next(p)
         end
         if _p_peek(p) == ">" _p_next(p) end
-        if p.named_groups[name] != null
+        if p.named_groups[name] is not null
             let gid = p.named_groups[name]
             return ast_node_new(ast_kind_backref(), gid)
         end
@@ -362,7 +362,7 @@ function _p_parse_escape(p, esc)
 end
 
 # Parses character classes [...] and [^...]
-function _p_parse_class(p)
+pub function _p_parse_class(p)
     _p_next(p) # consume "["
     let negated = 0
     if _p_peek(p) == "^"
@@ -464,7 +464,7 @@ function _p_parse_class(p)
 end
 
 # Parses quantifiers (*, +, ?, {m,n})
-function _p_parse_quantifier(p, atom)
+pub function _p_parse_quantifier(p, atom)
     if not _p_has_more(p)
         return atom
     end
@@ -574,7 +574,7 @@ function _p_parse_quantifier(p, atom)
 end
 
 # Main entry point to parse pattern into AST root
-function parse_regex_ast(pattern, flags = "")
+pub function parse_regex_ast(pattern, flags = "")
     let p = parser_state_new(pattern, flags)
     let ast = _p_parse_alternation(p)
     return [ast, p.group_count, p.flag_i, p.flag_m, p.flag_s, p.named_groups, p.group_names]
