@@ -1,0 +1,267 @@
+# Bytecode compiler: Translates AST into Virtual Machine instructions
+# Part of the Alya Language package ecosystem (https://github.com/alya-lang)
+
+import "./types.alya"
+import "./utils.alya"
+import "./parser.alya"
+
+struct CompilerState
+    instructions
+    flag_i
+    flag_m
+    flag_s
+end
+
+function compiler_state_new(flag_i = 0, flag_m = 0, flag_s = 0)
+    return CompilerState {
+        instructions: [],
+        flag_i: flag_i,
+        flag_m: flag_m,
+        flag_s: flag_s
+    }
+end
+
+function _c_emit(c, inst)
+    c.instructions.push(inst)
+    return len(c.instructions) - 1
+end
+
+function _c_pc(c)
+    return len(c.instructions)
+end
+
+function _c_patch_arg1(c, pc, target)
+    c.instructions[pc].arg1 = target
+end
+
+function _c_patch_arg2(c, pc, target)
+    c.instructions[pc].arg2 = target
+end
+
+function _c_compile_node(c, node)
+    if node == null return 0 end
+    let kind = node.kind
+
+    if kind == ast_kind_empty()
+        return 0
+    end
+
+    if kind == ast_kind_literal()
+        let code = node.val1
+        if c.flag_i == 1
+            _c_emit(c, inst_new(op_char_ci(), to_lower_code(code)))
+        else
+            _c_emit(c, inst_new(op_char(), code))
+        end
+        return 0
+    end
+
+    if kind == ast_kind_any()
+        _c_emit(c, inst_new(op_any(), c.flag_s))
+        return 0
+    end
+
+    if kind == ast_kind_class()
+        _c_emit(c, inst_new(op_class(), node.val1, 0, node.extra))
+        return 0
+    end
+
+    if kind == ast_kind_anchor_start()
+        _c_emit(c, inst_new(op_assert_start(), c.flag_m))
+        return 0
+    end
+
+    if kind == ast_kind_anchor_end()
+        _c_emit(c, inst_new(op_assert_end(), c.flag_m))
+        return 0
+    end
+
+    if kind == ast_kind_word_boundary()
+        _c_emit(c, inst_new(op_assert_word()))
+        return 0
+    end
+
+    if kind == ast_kind_not_word_boundary()
+        _c_emit(c, inst_new(op_assert_not_word()))
+        return 0
+    end
+
+    if kind == ast_kind_concat()
+        let children = node.children
+        let i = 0
+        let count = len(children)
+        while i < count
+            _c_compile_node(c, children[i])
+            i += 1
+        end
+        return 0
+    end
+
+    if kind == ast_kind_group()
+        let gid = node.val1
+        let is_cap = node.val2
+        let inner = node.children[0]
+        if is_cap == 1
+            _c_emit(c, inst_new(op_save(), gid * 2))
+            _c_compile_node(c, inner)
+            _c_emit(c, inst_new(op_save(), gid * 2 + 1))
+        else
+            _c_compile_node(c, inner)
+        end
+        return 0
+    end
+
+    if kind == ast_kind_alt()
+        let branches = node.children
+        let num_branches = len(branches)
+        if num_branches == 1
+            _c_compile_node(c, branches[0])
+            return 0
+        end
+
+        let end_jumps = []
+        let i = 0
+        while i < num_branches - 1
+            let split_pc = _c_emit(c, inst_new(op_split(), 0, 0))
+            let branch_start = _c_pc(c)
+            _c_patch_arg1(c, split_pc, branch_start)
+
+            _c_compile_node(c, branches[i])
+            let jmp = _c_emit(c, inst_new(op_jump(), 0))
+            end_jumps.push(jmp)
+
+            let next_pc = _c_pc(c)
+            _c_patch_arg2(c, split_pc, next_pc)
+            i += 1
+        end
+
+        _c_compile_node(c, branches[num_branches - 1])
+        let end_pc = _c_pc(c)
+        let k = 0
+        while k < len(end_jumps)
+            _c_patch_arg1(c, end_jumps[k], end_pc)
+            k += 1
+        end
+        return 0
+    end
+
+    if kind == ast_kind_quantifier()
+        let min_q = node.val1
+        let max_q = node.val2
+        let is_lazy = node.extra
+        let inner = node.children[0]
+
+        # Emit mandatory minimum repetitions
+        let m = 0
+        while m < min_q
+            _c_compile_node(c, inner)
+            m += 1
+        end
+
+        if max_q == -1
+            # Unbounded repetition (* or +)
+            let l1 = _c_pc(c)
+            let split_pc = _c_emit(c, inst_new(op_split(), 0, 0))
+            let l2 = _c_pc(c)
+            _c_compile_node(c, inner)
+            _c_emit(c, inst_new(op_jump(), l1))
+            let l3 = _c_pc(c)
+
+            if is_lazy == 1
+                _c_patch_arg1(c, split_pc, l3)
+                _c_patch_arg2(c, split_pc, l2)
+            else
+                _c_patch_arg1(c, split_pc, l2)
+                _c_patch_arg2(c, split_pc, l3)
+            end
+        elif max_q > min_q
+            let remaining = max_q - min_q
+            let r = 0
+            while r < remaining
+                let split_pc = _c_emit(c, inst_new(op_split(), 0, 0))
+                let inner_pc = _c_pc(c)
+                _c_compile_node(c, inner)
+                let skip_pc = _c_pc(c)
+
+                if is_lazy == 1
+                    _c_patch_arg1(c, split_pc, skip_pc)
+                    _c_patch_arg2(c, split_pc, inner_pc)
+                else
+                    _c_patch_arg1(c, split_pc, inner_pc)
+                    _c_patch_arg2(c, split_pc, skip_pc)
+                end
+                r += 1
+            end
+        end
+        return 0
+    end
+
+    return 0
+end
+
+# Checks if root AST node is anchored to start of string
+function _check_is_anchored(ast, flag_m)
+    if flag_m == 1 return 0 end
+    if ast == null return 0 end
+    if ast.kind == ast_kind_anchor_start() return 1 end
+    if ast.kind == ast_kind_concat() and len(ast.children) > 0
+        if ast.children[0].kind == ast_kind_anchor_start()
+            return 1
+        end
+    end
+    return 0
+end
+
+# Extracts literal prefix for fast scan optimization
+function _extract_literal_prefix(ast, flag_i)
+    if ast == null return "" end
+    let prefix = ""
+    let nodes = []
+    if ast.kind == ast_kind_concat()
+        nodes = ast.children
+    else
+        nodes = [ast]
+    end
+
+    let i = 0
+    if len(nodes) > 0 and nodes[0].kind == ast_kind_anchor_start()
+        i = 1
+    end
+
+    while i < len(nodes)
+        let n = nodes[i]
+        if n.kind == ast_kind_literal()
+            let c = n.val1
+            if flag_i == 1 c = to_lower_code(c) end
+            prefix += chr(c)
+        else
+            break
+        end
+        i += 1
+    end
+    return prefix
+end
+
+# Compiles regex pattern into a Regex struct
+function compile_regex(pattern, flags = "")
+    let parsed = parse_regex_ast(pattern, flags)
+    let ast = parsed[0]
+    let group_count = parsed[1]
+    let flag_i = parsed[2]
+    let flag_m = parsed[3]
+    let flag_s = parsed[4]
+
+    let c = compiler_state_new(flag_i, flag_m, flag_s)
+
+    # Emit root pattern
+    _c_compile_node(c, ast)
+
+    # Save end position of full match (slot 1) and finish
+    _c_emit(c, inst_new(op_save(), 1))
+    _c_emit(c, inst_new(op_match()))
+
+    let is_anchored = _check_is_anchored(ast, flag_m)
+    let prefix = _extract_literal_prefix(ast, flag_i)
+
+    return regex_new(pattern, flags, c.instructions, group_count, is_anchored, prefix, flag_i, flag_m, flag_s)
+end

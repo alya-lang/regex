@@ -1,28 +1,124 @@
-# Test suite for regex
+# Comprehensive Test Suite for Alya regex package
 import "std/test"
-import "../src/lib.alya" as pkg
+import "../src/lib.alya" as re
 
 function main()
-    test_suite("regex Test Suite")
+    test_suite("regex Package Test Suite")
     let r = runner_new()
 
-    # 1. Basic facade function
-    let res = pkg::hello("Alya")
-    runner_assert_str_eq(r, res, "Hello, Alya!", "pkg::hello returns formatted greeting")
+    # 1. Literals and basic matching
+    let r1 = re::compile("hello")
+    runner_assert_eq(r, re::is_match(r1, "say hello to the world"), 1, "matches literal substring")
+    runner_assert_eq(r, re::is_match(r1, "goodbye world"), 0, "rejects non-matching literal")
 
-    # 2. Default parameter
-    let default_res = pkg::hello()
-    runner_assert_str_eq(r, default_res, "Hello, World!", "pkg::hello() uses default name")
+    # 2. Case-insensitive flag (i)
+    let r_ci = re::compile("hello", "i")
+    runner_assert_eq(r, re::is_match(r_ci, "HELLO WORLD"), 1, "matches case-insensitively")
+    runner_assert_eq(r, re::is_match(r_ci, "hElLo there"), 1, "matches mixed case")
 
-    # 3. Modular types & config constructor
-    let cfg = pkg::new_config("Community", 3)
-    runner_assert_str_eq(r, cfg.name, "Community", "pkg::new_config sets name correctly")
-    runner_assert_str_eq(r, cfg.prefix, "Hello", "pkg::new_config sets default prefix")
-    runner_assert_eq(r, cfg.count, 3, "pkg::new_config sets count correctly")
+    # 3. Wildcard dot (.)
+    let r_dot = re::compile("a.c")
+    runner_assert_eq(r, re::is_match(r_dot, "abc"), 1, "dot matches character")
+    runner_assert_eq(r, re::is_match(r_dot, "a-c"), 1, "dot matches symbol")
+    runner_assert_eq(r, re::is_match(r_dot, "ac"), 0, "dot requires exactly one char")
 
-    # 4. Core custom formatter using struct
-    let custom_res = pkg::core_format_custom(cfg)
-    runner_assert_str_eq(r, custom_res, "Hello, Community!", "pkg::core_format_custom formats using config")
+    # 4. Shorthand character classes (\d, \w, \s)
+    let r_num = re::compile("\\d+")
+    runner_assert_eq(r, re::is_match(r_num, "item 425"), 1, "matches digit sequence")
+    runner_assert_eq(r, re::is_match(r_num, "no numbers here"), 0, "rejects text without digits")
+
+    let r_word = re::compile("^\\w+$")
+    runner_assert_eq(r, re::is_match(r_word, "variable_name_99"), 1, "matches valid identifier")
+    runner_assert_eq(r, re::is_match(r_word, "hello world"), 0, "rejects spaces for word class")
+
+    # 5. Custom character classes and ranges [a-z], [^0-9]
+    let r_hex = re::compile("^[0-9a-fA-F]+$")
+    runner_assert_eq(r, re::is_match(r_hex, "1a2F"), 1, "matches hex string")
+    runner_assert_eq(r, re::is_match(r_hex, "1g2z"), 0, "rejects non-hex characters")
+
+    let r_neg = re::compile("^[^0-9]+$")
+    runner_assert_eq(r, re::is_match(r_neg, "pure letters!"), 1, "negated class matches non-digits")
+    runner_assert_eq(r, re::is_match(r_neg, "has 1 digit"), 0, "negated class rejects digits")
+
+    # 6. Anchors (^, $, \b)
+    let r_anchor = re::compile("^start.*end$")
+    runner_assert_eq(r, re::is_match(r_anchor, "start of line and end"), 1, "matches anchored start and end")
+    runner_assert_eq(r, re::is_match(r_anchor, "not start and end"), 0, "rejects wrong start")
+    runner_assert_eq(r, re::is_match(r_anchor, "start and end not"), 0, "rejects wrong end")
+
+    let r_boundary = re::compile("\\bcat\\b")
+    runner_assert_eq(r, re::is_match(r_boundary, "a black cat sat"), 1, "matches whole word with \\b")
+    runner_assert_eq(r, re::is_match(r_boundary, "concatenate words"), 0, "rejects substring with \\b")
+
+    # 7. Quantifiers (*, +, ?, {n}, {n,m})
+    let r_quant = re::compile("ba*")
+    runner_assert_eq(r, re::is_match(r_quant, "b"), 1, "* matches zero occurrences")
+    runner_assert_eq(r, re::is_match(r_quant, "baaa"), 1, "* matches multiple occurrences")
+
+    let r_plus = re::compile("ba+")
+    runner_assert_eq(r, re::is_match(r_plus, "b"), 0, "+ requires at least one occurrence")
+    runner_assert_eq(r, re::is_match(r_plus, "ba"), 1, "+ matches one occurrence")
+
+    let r_range = re::compile("^\\d{{3}}-\\d{{4}}$")
+    runner_assert_eq(r, re::is_match(r_range, "555-1234"), 1, "matches exact repeat bounds {3} and {4}")
+    runner_assert_eq(r, re::is_match(r_range, "55-1234"), 0, "rejects too few digits in repeat bound")
+
+    # 8. Alternation (cat|dog|bird)
+    let r_alt = re::compile("cat|dog|bird")
+    runner_assert_eq(r, re::is_match(r_alt, "I have a dog"), 1, "matches middle branch")
+    runner_assert_eq(r, re::is_match(r_alt, "I have a cat"), 1, "matches first branch")
+    runner_assert_eq(r, re::is_match(r_alt, "I have a bird"), 1, "matches last branch")
+    runner_assert_eq(r, re::is_match(r_alt, "I have a fish"), 0, "rejects non-matching alternation")
+
+    # 9. Capturing groups and Match inspection
+    let r_date = re::compile("(\\d{{4}})-(\\d{{2}})-(\\d{{2}})")
+    let m_date = re::find(r_date, "Today is 2026-09-16 on the calendar")
+    runner_assert_eq(r, m_date != null, 1, "find locates match with groups")
+    runner_assert_str_eq(r, re::match_text(m_date), "2026-09-16", "group 0 is full match")
+    runner_assert_str_eq(r, re::match_group(m_date, 1), "2026", "group 1 is year")
+    runner_assert_str_eq(r, re::match_group(m_date, 2), "09", "group 2 is month")
+    runner_assert_str_eq(r, re::match_group(m_date, 3), "16", "group 3 is day")
+    runner_assert_eq(r, re::match_start(m_date), 9, "match start index is correct")
+    runner_assert_eq(r, re::match_end(m_date), 19, "match end index is correct")
+
+    # 10. find_all
+    let r_digits = re::compile("\\d+")
+    let all_m = re::find_all(r_digits, "Apples: 12, Oranges: 34, Lemons: 56")
+    runner_assert_eq(r, len(all_m), 3, "find_all returns all matches")
+    runner_assert_str_eq(r, re::match_text(all_m[0]), "12", "first find_all match")
+    runner_assert_str_eq(r, re::match_text(all_m[1]), "34", "second find_all match")
+    runner_assert_str_eq(r, re::match_text(all_m[2]), "56", "third find_all match")
+
+    # 11. replace and replace_all
+    let r_word_fox = re::compile("fox")
+    let rep1 = re::replace(r_word_fox, "the brown fox jumps over the other fox", "wolf")
+    runner_assert_str_eq(r, rep1, "the brown wolf jumps over the other fox", "replace replaces only first match")
+
+    let rep_all = re::replace_all(r_word_fox, "the brown fox jumps over the other fox", "wolf")
+    runner_assert_str_eq(r, rep_all, "the brown wolf jumps over the other wolf", "replace_all replaces all matches")
+
+    # Group replacement ($2, $1)
+    let r_name = re::compile("(\\w+)\\s+(\\w+)")
+    let reordered = re::replace(r_name, "John Doe", "$2, $1")
+    runner_assert_str_eq(r, reordered, "Doe, John", "replace with group placeholders $1, $2")
+
+    # 12. split
+    let r_split = re::compile("[,;\\s]+")
+    let tokens = re::split(r_split, "alpha, beta;  gamma   delta")
+    runner_assert_eq(r, len(tokens), 4, "split divides into 4 segments")
+    runner_assert_str_eq(r, tokens[0], "alpha", "split segment 0")
+    runner_assert_str_eq(r, tokens[1], "beta", "split segment 1")
+    runner_assert_str_eq(r, tokens[2], "gamma", "split segment 2")
+    runner_assert_str_eq(r, tokens[3], "delta", "split segment 3")
+
+    # 13. escape
+    let escaped = re::escape("file.name*?(1).txt")
+    runner_assert_str_eq(r, escaped, "file\\.name\\*\\?\\(1\\)\\.txt", "escape escapes all regex metacharacters")
+    runner_assert_eq(r, re::test(escaped, "file.name*?(1).txt"), 1, "escaped pattern matches literally")
+
+    # 14. One-liner convenience API
+    runner_assert_eq(r, re::test("^\\d+$", "123456"), 1, "re::test succeeds for digits")
+    runner_assert_eq(r, re::test("^\\d+$", "123a56"), 0, "re::test fails on non-digits")
 
     let failed = runner_summary(r)
     if failed > 0

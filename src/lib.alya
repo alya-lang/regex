@@ -1,14 +1,116 @@
-# regex library
+# regex - High-performance Regular Expression Library for Alya
 # Part of the Alya Language package ecosystem (https://github.com/alya-lang)
 
 import "./types.alya"
-import "./core/formatter.alya"
+import "./utils.alya"
+import "./parser.alya"
+import "./compiler.alya"
+import "./vm.alya"
 
-# Public facade functions
-function hello(name = "World")
-    return core_format_greeting(name)
+# ═══════════════════════════════════════════════════════════════
+# Compilation & Pattern Creation
+# ═══════════════════════════════════════════════════════════════
+
+# Compiles a regular expression pattern into a Regex object
+function compile(pattern, flags = "")
+    return compile_regex(pattern, flags)
 end
 
-function new_config(name = "World", count = 1)
-    return make_config(name, count)
+# Alias for compile
+function regex(pattern, flags = "")
+    return compile_regex(pattern, flags)
+end
+
+# ═══════════════════════════════════════════════════════════════
+# Operations on Compiled Regex
+# ═══════════════════════════════════════════════════════════════
+
+# Returns 1 if regex matches any part of text, 0 otherwise
+function is_match(reg, text)
+    if reg == null return 0 end
+    let m = vm_search(reg, text, 0)
+    if m != null
+        return 1
+    end
+    return 0
+end
+
+# Searches for the first match in text; returns Match struct or null
+function find(reg, text)
+    if reg == null return null end
+    return vm_search(reg, text, 0)
+end
+
+# Finds all non-overlapping matches in text; returns array of Match structs
+function find_all(reg, text)
+    if reg == null return [] end
+    return vm_find_all(reg, text)
+end
+
+# Replaces the first match in text using replacement template ($0, $1, etc.)
+function replace(reg, text, replacement)
+    if reg == null return text end
+    return vm_replace(reg, text, replacement, 0)
+end
+
+# Replaces all matches in text using replacement template ($0, $1, etc.)
+function replace_all(reg, text, replacement)
+    if reg == null return text end
+    return vm_replace(reg, text, replacement, 1)
+end
+
+# Splits text by matches of the regex
+function split(reg, text, limit = -1)
+    if reg == null return [text] end
+    return vm_split(reg, text, limit)
+end
+
+# ═══════════════════════════════════════════════════════════════
+# Pattern One-Liner Convenience Functions
+# ═══════════════════════════════════════════════════════════════
+
+# Tests if pattern matches text without pre-compiling
+function test(pattern, text, flags = "")
+    let reg = compile_regex(pattern, flags)
+    return is_match(reg, text)
+end
+
+# Finds first match of pattern in text
+function find_pattern(pattern, text, flags = "")
+    let reg = compile_regex(pattern, flags)
+    return find(reg, text)
+end
+
+# Alias for find_pattern
+function match_pattern(pattern, text, flags = "")
+    return find_pattern(pattern, text, flags)
+end
+
+# Finds all matches of pattern in text
+function find_all_pattern(pattern, text, flags = "")
+    let reg = compile_regex(pattern, flags)
+    return find_all(reg, text)
+end
+
+# Replaces first occurrence of pattern in text
+function replace_pattern(pattern, text, replacement, flags = "")
+    let reg = compile_regex(pattern, flags)
+    return replace(reg, text, replacement)
+end
+
+# Replaces all occurrences of pattern in text
+function replace_all_pattern(pattern, text, replacement, flags = "")
+    let reg = compile_regex(pattern, flags)
+    return replace_all(reg, text, replacement)
+end
+
+# Splits text by pattern
+function split_pattern(pattern, text, limit = -1, flags = "")
+    let reg = compile_regex(pattern, flags)
+    return split(reg, text, limit)
+end
+
+# Escapes special regular expression characters in a literal string
+function escape(str_val)
+    return escape_pattern(str_val)
 end

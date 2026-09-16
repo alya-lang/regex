@@ -1,0 +1,417 @@
+# Regular expression parser: AST generator from regex syntax
+# Part of the Alya Language package ecosystem (https://github.com/alya-lang)
+
+import "./types.alya"
+import "./utils.alya"
+
+struct ParserState
+    pattern
+    pos
+    len
+    group_count
+    flags
+    flag_i
+    flag_m
+    flag_s
+end
+
+function parser_state_new(pattern, flags = "")
+    let flag_i = 0
+    let flag_m = 0
+    let flag_s = 0
+    let flen = len(flags)
+    let i = 0
+    while i < flen
+        let fc = char_at(flags, i)
+        if fc == "i" flag_i = 1 end
+        if fc == "m" flag_m = 1 end
+        if fc == "s" flag_s = 1 end
+        i += 1
+    end
+
+    return ParserState {
+        pattern: pattern,
+        pos: 0,
+        len: len(pattern),
+        group_count: 0,
+        flags: flags,
+        flag_i: flag_i,
+        flag_m: flag_m,
+        flag_s: flag_s
+    }
+end
+
+function _p_has_more(p)
+    return p.pos < p.len
+end
+
+function _p_peek(p)
+    if p.pos < p.len
+        return char_at(p.pattern, p.pos)
+    end
+    return ""
+end
+
+function _p_next(p)
+    if p.pos < p.len
+        let ch = char_at(p.pattern, p.pos)
+        p.pos += 1
+        return ch
+    end
+    return ""
+end
+
+# Parses an alternation (expr | expr | ...)
+function _p_parse_alternation(p)
+    let branches = []
+    branches.push(_p_parse_branch(p))
+    while _p_peek(p) == "|"
+        _p_next(p)
+        branches.push(_p_parse_branch(p))
+    end
+    if len(branches) == 1
+        return branches[0]
+    end
+    return ast_node_new(ast_kind_alt(), 0, 0, null, branches)
+end
+
+# Parses a sequence of concatenated elements
+function _p_parse_branch(p)
+    let pieces = []
+    while _p_has_more(p) and _p_peek(p) != "|" and _p_peek(p) != ")"
+        let atom = _p_parse_atom(p)
+        if atom == null
+            break
+        end
+        let piece = _p_parse_quantifier(p, atom)
+        pieces.push(piece)
+    end
+    if len(pieces) == 0
+        return ast_node_new(ast_kind_empty())
+    end
+    if len(pieces) == 1
+        return pieces[0]
+    end
+    return ast_node_new(ast_kind_concat(), 0, 0, null, pieces)
+end
+
+# Parses a single atomic pattern element
+function _p_parse_atom(p)
+    if not _p_has_more(p)
+        return null
+    end
+    let ch = _p_peek(p)
+
+    if ch == "^"
+        _p_next(p)
+        return ast_node_new(ast_kind_anchor_start())
+    end
+
+    if ch == "$"
+        _p_next(p)
+        return ast_node_new(ast_kind_anchor_end())
+    end
+
+    if ch == "."
+        _p_next(p)
+        return ast_node_new(ast_kind_any())
+    end
+
+    if ch == "("
+        _p_next(p)
+        let is_capturing = 1
+        if _p_peek(p) == "?" and p.pos + 1 < p.len and char_at(p.pattern, p.pos + 1) == ":"
+            _p_next(p)
+            _p_next(p)
+            is_capturing = 0
+        end
+
+        let gid = 0
+        if is_capturing == 1
+            p.group_count += 1
+            gid = p.group_count
+        end
+
+        let inner = _p_parse_alternation(p)
+        if _p_peek(p) == ")"
+            _p_next(p)
+        end
+        return ast_node_new(ast_kind_group(), gid, is_capturing, null, [inner])
+    end
+
+    if ch == "["
+        return _p_parse_class(p)
+    end
+
+    if ch == "\\"
+        _p_next(p)
+        if not _p_has_more(p)
+            return ast_node_new(ast_kind_literal(), 92)
+        end
+        let esc = _p_next(p)
+        return _p_parse_escape(p, esc)
+    end
+
+    _p_next(p)
+    let code = ord(ch)
+    if p.flag_i == 1
+        code = to_lower_code(code)
+    end
+    return ast_node_new(ast_kind_literal(), code)
+end
+
+# Parses escape sequence \d, \w, \s, \b, \n, etc.
+function _p_parse_escape(p, esc)
+    if esc == "d"
+        return ast_node_new(ast_kind_class(), 0, 0, [[48, 57]])
+    end
+    if esc == "D"
+        return ast_node_new(ast_kind_class(), 1, 0, [[48, 57]])
+    end
+    if esc == "w"
+        return ast_node_new(ast_kind_class(), 0, 0, [[48, 57], [65, 90], [95, 95], [97, 122]])
+    end
+    if esc == "W"
+        return ast_node_new(ast_kind_class(), 1, 0, [[48, 57], [65, 90], [95, 95], [97, 122]])
+    end
+    if esc == "s"
+        return ast_node_new(ast_kind_class(), 0, 0, [[9, 13], [32, 32]])
+    end
+    if esc == "S"
+        return ast_node_new(ast_kind_class(), 1, 0, [[9, 13], [32, 32]])
+    end
+    if esc == "b"
+        return ast_node_new(ast_kind_word_boundary())
+    end
+    if esc == "B"
+        return ast_node_new(ast_kind_not_word_boundary())
+    end
+    if esc == "n"
+        return ast_node_new(ast_kind_literal(), 10)
+    end
+    if esc == "r"
+        return ast_node_new(ast_kind_literal(), 13)
+    end
+    if esc == "t"
+        return ast_node_new(ast_kind_literal(), 9)
+    end
+    if esc == "0"
+        return ast_node_new(ast_kind_literal(), 0)
+    end
+
+    let c = ord(esc)
+    if p.flag_i == 1
+        c = to_lower_code(c)
+    end
+    return ast_node_new(ast_kind_literal(), c)
+end
+
+# Parses character classes [...] and [^...]
+function _p_parse_class(p)
+    _p_next(p)
+    let negated = 0
+    if _p_peek(p) == "^"
+        negated = 1
+        _p_next(p)
+    end
+
+    let ranges = []
+    if _p_peek(p) == "]"
+        ranges.push([93, 93])
+        _p_next(p)
+    end
+
+    while _p_has_more(p) and _p_peek(p) != "]"
+        let ch1 = _p_next(p)
+        let code1 = 0
+        if ch1 == "\\"
+            let esc = _p_next(p)
+            if esc == "d"
+                ranges.push([48, 57])
+                continue
+            elif esc == "w"
+                ranges.push([48, 57])
+                ranges.push([65, 90])
+                ranges.push([95, 95])
+                ranges.push([97, 122])
+                continue
+            elif esc == "s"
+                ranges.push([9, 13])
+                ranges.push([32, 32])
+                continue
+            elif esc == "n"
+                code1 = 10
+            elif esc == "r"
+                code1 = 13
+            elif esc == "t"
+                code1 = 9
+            elif esc == "0"
+                code1 = 0
+            else
+                code1 = ord(esc)
+            end
+        else
+            code1 = ord(ch1)
+        end
+
+        if p.flag_i == 1
+            code1 = to_lower_code(code1)
+        end
+
+        if _p_peek(p) == "-" and p.pos + 1 < p.len and char_at(p.pattern, p.pos + 1) != "]"
+            _p_next(p)
+            let ch2 = _p_next(p)
+            let code2 = 0
+            if ch2 == "\\"
+                let esc2 = _p_next(p)
+                if esc2 == "n"
+                    code2 = 10
+                elif esc2 == "r"
+                    code2 = 13
+                elif esc2 == "t"
+                    code2 = 9
+                elif esc2 == "0"
+                    code2 = 0
+                else
+                    code2 = ord(esc2)
+                end
+            else
+                code2 = ord(ch2)
+            end
+
+            if p.flag_i == 1
+                code2 = to_lower_code(code2)
+            end
+
+            if code1 <= code2
+                ranges.push([code1, code2])
+            else
+                ranges.push([code2, code1])
+            end
+        else
+            ranges.push([code1, code1])
+        end
+    end
+
+    if _p_peek(p) == "]"
+        _p_next(p)
+    end
+    return ast_node_new(ast_kind_class(), negated, 0, ranges)
+end
+
+# Parses quantifiers (*, +, ?, {m,n})
+function _p_parse_quantifier(p, atom)
+    if not _p_has_more(p)
+        return atom
+    end
+    let ch = _p_peek(p)
+    let min_q = 0
+    let max_q = 0
+    let has_q = 0
+
+    if ch == "*"
+        _p_next(p)
+        min_q = 0
+        max_q = -1
+        has_q = 1
+    elif ch == "+"
+        _p_next(p)
+        min_q = 1
+        max_q = -1
+        has_q = 1
+    elif ch == "?"
+        _p_next(p)
+        min_q = 0
+        max_q = 1
+        has_q = 1
+    end
+
+    let is_brace_q = 0
+    let is_esc_brace = 0
+    if ch == "{"
+        is_brace_q = 1
+    elif ch == "\\" and p.pos + 1 < p.len and char_at(p.pattern, p.pos + 1) == "{"
+        is_brace_q = 1
+        is_esc_brace = 1
+    end
+
+    if is_brace_q == 1
+        let save_pos = p.pos
+        if is_esc_brace == 1
+            _p_next(p)
+        end
+        _p_next(p)
+        let num1_str = ""
+        while _p_has_more(p) and is_digit(_p_peek(p)) == 1
+            num1_str += _p_next(p)
+        end
+        if len(num1_str) > 0
+            let n1 = int(num1_str)
+            let is_close1 = 0
+            if _p_peek(p) == "}"
+                _p_next(p)
+                is_close1 = 1
+            elif _p_peek(p) == "\\" and p.pos + 1 < p.len and char_at(p.pattern, p.pos + 1) == "}"
+                _p_next(p)
+                _p_next(p)
+                is_close1 = 1
+            end
+
+            if is_close1 == 1
+                min_q = n1
+                max_q = n1
+                has_q = 1
+            elif _p_peek(p) == ","
+                _p_next(p)
+                let num2_str = ""
+                while _p_has_more(p) and is_digit(_p_peek(p)) == 1
+                    num2_str += _p_next(p)
+                end
+                let is_close2 = 0
+                if _p_peek(p) == "}"
+                    _p_next(p)
+                    is_close2 = 1
+                elif _p_peek(p) == "\\" and p.pos + 1 < p.len and char_at(p.pattern, p.pos + 1) == "}"
+                    _p_next(p)
+                    _p_next(p)
+                    is_close2 = 1
+                end
+
+                if is_close2 == 1
+                    min_q = n1
+                    if len(num2_str) > 0
+                        max_q = int(num2_str)
+                    else
+                        max_q = -1
+                    end
+                    has_q = 1
+                else
+                    p.pos = save_pos
+                end
+            else
+                p.pos = save_pos
+            end
+        else
+            p.pos = save_pos
+        end
+    end
+
+    if has_q == 0
+        return atom
+    end
+
+    let is_lazy = 0
+    if _p_peek(p) == "?"
+        _p_next(p)
+        is_lazy = 1
+    end
+
+    return ast_node_new(ast_kind_quantifier(), min_q, max_q, is_lazy, [atom])
+end
+
+# Main entry point to parse pattern into AST root
+function parse_regex_ast(pattern, flags = "")
+    let p = parser_state_new(pattern, flags)
+    let ast = _p_parse_alternation(p)
+    return [ast, p.group_count, p.flag_i, p.flag_m, p.flag_s]
+end

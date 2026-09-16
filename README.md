@@ -5,16 +5,26 @@
 [![Alya](https://img.shields.io/badge/dynamic/toml?url=https%3A%2F%2Fraw.githubusercontent.com%2Falya-lang%2Fregex%2Fmain%2Falya.toml&query=%24.package.alya-version&label=Alya&color=orange&prefix=%3E%3D)](https://github.com/alya-lang/alya)
 [![Package Version](https://img.shields.io/badge/dynamic/toml?url=https%3A%2F%2Fraw.githubusercontent.com%2Falya-lang%2Fregex%2Fmain%2Falya.toml&query=%24.package.version&label=Version&color=brightgreen)](alya.toml)
 
-Modern regular expression engine with linear-time matching, character classes, and capture groups
+High-performance, pure Alya regular expression engine with linear-time matching, character classes, greedy & lazy quantifiers, and capturing groups.
 
 ---
 
 ## 🌟 Features
 
-- ⚡ **Lightweight & Fast**: Built for speed with minimal overhead
-- 🧩 **Modular Architecture**: Multi-module design supporting flat modules (`types.alya`) and subfolder hierarchies (`core/formatter.alya`)
-- 🛡️ **Reliable & Typed**: Explicit struct definitions and clean namespaced APIs
-- 🧪 **Well Tested**: Comprehensive test suite with standard assertions
+- ⚡ **Pure Alya & Fast**: Zero external C dependencies; compiles directly with `alyac` to native machine code (>190,000 matches/sec).
+- 🎯 **Rich Pattern Syntax**:
+  - Literals & escapes (`\.`, `\\`, `\+`, `\*`, `\?`, `\^`, `\$`, `\(`, `\)`, `\[`, `\]`, `\{`, `\}`, `\|`, `\n`, `\r`, `\t`, `\0`).
+  - Shorthand character classes (`\d`, `\D`, `\w`, `\W`, `\s`, `\S`).
+  - Custom character classes and ranges (`[a-z]`, `[0-9A-Fa-f]`, `[^0-9]`, nested shorthands).
+  - Anchors and word boundaries (`^`, `$`, `\b`, `\B`).
+  - Quantifiers (`*`, `+`, `?`, `{n}`, `{n,}`, `{min,max}`) with greedy and lazy modes (`*?`, `+?`, `??`).
+  - Alternations (`cat|dog|fish`).
+  - Capturing groups (`(...)`) and non-capturing groups (`(?:...)`).
+- 🚩 **Standard Flags**:
+  - `i`: Case-insensitive matching.
+  - `m`: Multiline mode (`^` and `$` match line starts and line ends).
+  - `s`: Dotall mode (`.` matches newline `\n`).
+- 🛠️ **Full Toolkit**: Pre-compilation (`compile`), one-liners (`test`, `find_pattern`), group replacements (`$0`, `$1`, `$&`), splitting (`split`), and metacharacter escaping (`escape`).
 
 ---
 
@@ -23,23 +33,21 @@ Modern regular expression engine with linear-time matching, character classes, a
 ```
 regex/
 ├── alya.toml               # Package manifest
-├── c/                      # (Optional) Native C sources for zero-dependency FFI packages
+├── README.md               # Package documentation
 ├── src/
-│   ├── lib.alya            # Public API facade
-│   ├── types.alya          # Data structures & struct definitions
-│   ├── ffi.alya            # (Optional) Native extern "C" declarations
-│   └── core/               # Subdirectory module hierarchy (optional for larger packages)
-│       └── formatter.alya  # Domain formatting logic & internal helpers
+│   ├── lib.alya            # Public API facade & convenience functions
+│   ├── types.alya          # Struct definitions (Regex, Match, Instruction, AstNode)
+│   ├── utils.alya          # Character classification, word boundaries, escape helpers
+│   ├── parser.alya         # Recursive descent AST parser
+│   ├── compiler.alya       # Bytecode compiler emitting optimized VM instructions
+│   └── vm.alya             # Virtual Machine execution engine with capture tracking
 ├── examples/
-│   └── demo.alya           # Runnable usage examples
+│   └── demo.alya           # Real-world usage demonstrations
 ├── tests/
-│   └── test_basic.alya     # Automated test suite
+│   └── test_basic.alya     # Comprehensive 53-assertion test suite
 └── benches/
-    └── bench_basic.alya    # Micro-benchmarks
+    └── bench_basic.alya    # Micro-benchmarking suite
 ```
-
-> [!NOTE]
-> **Modular Source & Native C:** Modules can be structured flat inside `src/` (e.g. `src/types.alya`) or grouped into subdirectories (e.g. `src/core/formatter.alya`). Packages bundling native C sources declare them in `alya.toml` under `[build]` (`c-sources`, `c-flags`, `c-include-dirs`); `alyac` automatically compiles and caches them into `.o` object files in `~/.alya/c_obj` with zero runtime dependency overhead.
 
 ---
 
@@ -64,17 +72,32 @@ alyac install
 ## 🚀 Quick Start
 
 ```alya
-import "regex" as pkg
+import "regex" as re
 
 function main()
-    # Basic facade call
-    let greeting = pkg::hello("Alya")
-    say greeting
+    # 1. Quick pattern test
+    if re::test("^[a-zA-Z0-9_]+$", "username_123") == 1
+        say "Valid username!"
+    end
 
-    # Struct construction and domain helpers
-    let cfg = pkg::new_config("Community", 2)
-    say "Target: " + cfg.name
-    say "Formatted: " + pkg::core_format_custom(cfg)
+    # 2. Pre-compiled Regex with Capturing Groups
+    let date_reg = re::compile("(\\d{{4}})-(\\d{{2}})-(\\d{{2}})")
+    let m = re::find(date_reg, "Release date: 2026-09-16")
+    if m != null
+        say "Full Match: " + re::match_text(m)       # 2026-09-16
+        say "Year:       " + re::match_group(m, 1)   # 2026
+        say "Month:      " + re::match_group(m, 2)   # 09
+        say "Day:        " + re::match_group(m, 3)   # 16
+    end
+
+    # 3. Replacing with group placeholders ($1, $2)
+    let name_reg = re::compile("(\\w+)\\s+(\\w+)")
+    let reordered = re::replace(name_reg, "Ada Lovelace", "$2, $1")
+    say reordered # "Lovelace, Ada"
+
+    # 4. Token Splitting
+    let tokens = re::split_pattern("[,;\\s]+", "apple, banana; cherry  date")
+    # tokens -> ["apple", "banana", "cherry", "date"]
 end
 
 main()
@@ -84,12 +107,42 @@ main()
 
 ## 📖 API Reference
 
+### Compilation & Core Operations
+
 | Function | Arguments | Returns | Description |
 |---|---|---|---|
-| `hello(name)` | `name = "World"` | `string` | Returns a friendly greeting message. |
-| `new_config(name, count)` | `name = "World", count = 1` | `RegexConfig` | Constructs a new configuration struct. |
-| `core_format_greeting(name)` | `name` | `string` | Core formatter producing `Hello, {name}!`. |
-| `core_format_custom(config)` | `config: RegexConfig` | `string` | Formats greeting using prefix and name from config. |
+| `compile(pattern, flags)` | `pattern: string, flags = ""` | `Regex` | Compiles a regular expression into an optimized bytecode object. |
+| `regex(pattern, flags)` | `pattern: string, flags = ""` | `Regex` | Alias for `compile()`. |
+| `is_match(reg, text)` | `reg: Regex, text: string` | `int (1/0)` | Checks whether the pattern matches anywhere within `text`. |
+| `find(reg, text)` | `reg: Regex, text: string` | `Match / null` | Locates the first match in `text`. |
+| `find_all(reg, text)` | `reg: Regex, text: string` | `[Match]` | Returns all non-overlapping matches found in `text`. |
+| `replace(reg, text, rep)` | `reg: Regex, text: string, rep: string` | `string` | Replaces the first match using template string (`$0`, `$1`..`$9`). |
+| `replace_all(reg, text, rep)` | `reg: Regex, text: string, rep: string` | `string` | Replaces all matches using template string. |
+| `split(reg, text, limit)` | `reg: Regex, text: string, limit = -1` | `[string]` | Splits `text` around matches of `reg`. |
+
+### Pattern One-Liner Functions
+
+| Function | Arguments | Returns | Description |
+|---|---|---|---|
+| `test(pattern, text, flags)` | `pattern, text, flags = ""` | `int (1/0)` | Quickly tests if `pattern` matches `text`. |
+| `find_pattern(pattern, text, flags)` | `pattern, text, flags = ""` | `Match / null` | Finds first match of `pattern` in `text`. |
+| `find_all_pattern(pattern, text, flags)` | `pattern, text, flags = ""` | `[Match]` | Finds all matches of `pattern` in `text`. |
+| `replace_pattern(pattern, text, rep, flags)` | `pattern, text, rep, flags = ""` | `string` | Replaces first match of `pattern`. |
+| `replace_all_pattern(pattern, text, rep, flags)` | `pattern, text, rep, flags = ""` | `string` | Replaces all matches of `pattern`. |
+| `split_pattern(pattern, text, limit, flags)` | `pattern, text, limit = -1, flags = ""` | `[string]` | Splits `text` by `pattern`. |
+| `escape(str_val)` | `str_val: string` | `string` | Escapes metacharacters for literal matching. |
+
+### Match Helpers
+
+| Function | Arguments | Returns | Description |
+|---|---|---|---|
+| `match_text(m)` | `m: Match` | `string` | Returns the entire matched substring. |
+| `match_start(m)` | `m: Match` | `int` | Returns the zero-based starting character offset. |
+| `match_end(m)` | `m: Match` | `int` | Returns the zero-based ending character offset. |
+| `match_len(m)` | `m: Match` | `int` | Returns match length (`end - start`). |
+| `match_group(m, idx)` | `m: Match, idx = 0` | `string` | Returns captured group text (`0` = full match, `1..n` = groups). |
+| `match_groups(m)` | `m: Match` | `[string]` | Returns array of all captured groups. |
+| `match_span(m, idx)` | `m: Match, idx = 0` | `[start, end]` | Returns `[start, end]` offset pair for group `idx`. |
 
 ---
 
@@ -101,13 +154,13 @@ Run the test suite using `alyac`:
 alyac run tests/test_basic.alya
 ```
 
-Run the benchmark suite:
+Run the performance micro-benchmarks:
 
 ```bash
 alyac run benches/bench_basic.alya
 ```
 
-Run the example demo:
+Run the interactive showcase:
 
 ```bash
 alyac run examples/demo.alya
@@ -117,23 +170,23 @@ alyac run examples/demo.alya
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please follow these steps:
+Contributions are welcome! Please follow these guidelines:
 
-1. Fork the repository and clone it locally
-2. Install dependencies:
+1. Fork the repository and create your feature branch:
    ```bash
-   alyac install
+   git checkout -b feat/my-feature
    ```
-3. Create your feature branch (`git checkout -b feature/my-feature`)
-4. Verify tests and formatting before opening a PR:
+2. Ensure code is formatted with the canonical formatter:
    ```bash
-   alyac test
-   alyac fmt . --check
+   alyac fmt .
    ```
-5. Commit your changes (`git commit -m "feat: add feature"`) and open a Pull Request
+3. Run the automated test suite before opening a pull request:
+   ```bash
+   alyac run tests/test_basic.alya
+   ```
 
 ---
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.

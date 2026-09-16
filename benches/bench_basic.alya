@@ -1,26 +1,74 @@
-# Benchmark suite for regex
+# Benchmark suite for alya-lang/regex
 import "std/bench"
-import "../src/lib.alya" as pkg
+import "../src/lib.alya" as re
 
 function main()
-    let runner = bench_runner("regex Micro-Benchmarks")
+    let runner = bench_runner("alya-lang/regex High Performance Micro-Benchmarks")
 
-    bench_start(runner, 100000)
-    let i = 0
-    while i < 100000
-        pkg::hello("Alya")
-        i += 1
+    # 1. Regex Compilation Benchmark
+    let email_pattern = "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{{2,}}$"
+    bench_start(runner, 10000)
+    let c = 0
+    while c < 10000
+        let reg = re::compile(email_pattern)
+        c += 1
     end
-    bench_stop(runner, "hello() 100k calls")
+    bench_stop(runner, "compile (complex email regex)")
 
+    # 2. is_match Benchmark (Pre-compiled)
+    let email_reg = re::compile(email_pattern)
+    let email_str = "user.developer+test@domain.company.com"
     bench_start(runner, 50000)
-    let j = 0
-    while j < 50000
-        let cfg = pkg::new_config("Bench", 1)
-        pkg::core_format_custom(cfg)
-        j += 1
+    let m = 0
+    while m < 50000
+        re::is_match(email_reg, email_str)
+        m += 1
     end
-    bench_stop(runner, "new_config() + format_custom() 50k calls")
+    bench_stop(runner, "is_match (compiled email pattern)")
+
+    # 3. Capturing Groups Benchmark
+    let date_reg = re::compile("(\\d{{4}})-(\\d{{2}})-(\\d{{2}})")
+    let date_str = "Event log date: 2026-09-16 recorded"
+    bench_start(runner, 50000)
+    let g = 0
+    while g < 50000
+        re::find(date_reg, date_str)
+        g += 1
+    end
+    bench_stop(runner, "find (3 capturing groups)")
+
+    # 4. find_all Benchmark
+    let num_reg = re::compile("\\d+")
+    let numbers_str = "Values: 10, 25, 42, 99, 100, 250"
+    bench_start(runner, 20000)
+    let fa = 0
+    while fa < 20000
+        re::find_all(num_reg, numbers_str)
+        fa += 1
+    end
+    bench_stop(runner, "find_all (6 digit matches)")
+
+    # 5. replace_all Benchmark
+    let phone_reg = re::compile("\\b\\d{{3}}-\\d{{3}}-(\\d{{4}})\\b")
+    let phone_str = "Call 555-123-4567 or 555-987-6543 today"
+    bench_start(runner, 20000)
+    let rep = 0
+    while rep < 20000
+        re::replace_all(phone_reg, phone_str, "***-***-$1")
+        rep += 1
+    end
+    bench_stop(runner, "replace_all (phone masking with $1)")
+
+    # 6. split Benchmark
+    let split_reg = re::compile("[,;\\s]+")
+    let split_str = "apple, orange; banana  grape  mango;peach"
+    bench_start(runner, 20000)
+    let sp = 0
+    while sp < 20000
+        re::split(split_reg, split_str)
+        sp += 1
+    end
+    bench_stop(runner, "split (multi-delimiter regex)")
 
     bench_summary(runner)
 end

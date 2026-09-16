@@ -1,15 +1,87 @@
-# Example usage of regex
-import "../src/lib.alya" as pkg
+# Real-world demonstration of the Alya regex package
+import "../src/lib.alya" as re
 
 function main()
-    # Basic greeting
-    let msg = pkg::hello("Alya Developer")
-    say msg
+    say "=========================================================="
+    say "        Alya Regular Expression (regex) Showcase          "
+    say "=========================================================="
+    say ""
 
-    # Using configuration struct
-    let cfg = pkg::new_config("Modular Architecture", 5)
-    say "Target: " + cfg.name
-    say "Formatted: " + pkg::core_format_custom(cfg)
+    # 1. Email validation
+    say "[1] Email Address Validation:"
+    let email_pattern = "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{{2,}}$"
+    let test_emails = [
+        "user.name@example.com",
+        "dev+alya@company.org",
+        "invalid-email-at-domain",
+        "@missing-user.com"
+    ]
+    let i = 0
+    while i < len(test_emails)
+        let em = test_emails[i]
+        let valid = re::test(email_pattern, em)
+        if valid == 1
+            say "  [VALID]   " + em
+        else
+            say "  [INVALID] " + em
+        end
+        i += 1
+    end
+    say ""
+
+    # 2. Extracting SemVer components using capturing groups
+    say "[2] Semantic Version Parsing with Capturing Groups:"
+    let semver_reg = re::compile("^v?(\\d+)\\.(\\d+)\\.(\\d+)(?:-([a-zA-Z0-9._-]+))?$")
+    let version_str = "v2.14.0-alpha.3"
+    let sem_m = re::find(semver_reg, version_str)
+    if sem_m != null
+        say "  Input:       " + version_str
+        say "  Major:       " + re::match_group(sem_m, 1)
+        say "  Minor:       " + re::match_group(sem_m, 2)
+        say "  Patch:       " + re::match_group(sem_m, 3)
+        let prerelease = re::match_group(sem_m, 4)
+        if len(prerelease) > 0
+            say "  Pre-release: " + prerelease
+        end
+    end
+    say ""
+
+    # 3. Data Masking (PII protection)
+    say "[3] Sensitive Information Masking (replace_all):"
+    let raw_text = "Call Alice at 555-123-4567 or Bob at 555-987-6543 for details."
+    let phone_pattern = "\\b\\d{{3}}-\\d{{3}}-(\\d{{4}})\\b"
+    let masked = re::replace_all_pattern(phone_pattern, raw_text, "***-***-$1")
+    say "  Original: " + raw_text
+    say "  Masked:   " + masked
+    say ""
+
+    # 4. Extracting Markdown Links with find_all
+    say "[4] Extracting Markdown Links:"
+    let markdown = "Read our [Docs](https://alya-lang.org/docs) or visit [GitHub](https://github.com/alya-lang/alya) for source code."
+    let link_reg = re::compile("\\[([^\\]]+)\\]\\((https?://[^\\)]+)\\)")
+    let links = re::find_all(link_reg, markdown)
+    say "  Found " + str(len(links)) + " links:"
+    let k = 0
+    while k < len(links)
+        let link_m = links[k]
+        say "    • Label: '" + re::match_group(link_m, 1) + "' => URL: " + re::match_group(link_m, 2)
+        k += 1
+    end
+    say ""
+
+    # 5. Robust Token Splitting
+    say "[5] Splitting by Complex Delimiters:"
+    let csv_like = "item1;  item2,   item3 \t item4;item5"
+    let items = re::split_pattern("[,;\\s]+", csv_like)
+    say "  Input: '" + csv_like + "'"
+    say "  Tokens (" + str(len(items)) + " items):"
+    let t = 0
+    while t < len(items)
+        say "    [" + str(t) + "] => '" + items[t] + "'"
+        t += 1
+    end
+    say ""
+    say "All examples finished successfully!"
 end
 
 main()

@@ -1,0 +1,367 @@
+# Virtual machine and execution engine for regex matching
+# Part of the Alya Language package ecosystem (https://github.com/alya-lang)
+
+import "./types.alya"
+import "./utils.alya"
+
+# Evaluates instruction step with backtracking
+function _vm_step(code, pc, text, pos, text_len, slots, flag_i, flag_m, flag_s, counter)
+    # Protection against infinite loops
+    counter[0] += 1
+    if counter[0] > 1000000
+        return null
+    end
+
+    let inst = code[pc]
+    let op = inst.op
+
+    if op == op_char()
+        if pos >= text_len return null end
+        if ord(char_at(text, pos)) == inst.arg1
+            return _vm_step(code, pc + 1, text, pos + 1, text_len, slots, flag_i, flag_m, flag_s, counter)
+        end
+        return null
+    end
+
+    if op == op_char_ci()
+        if pos >= text_len return null end
+        let c = to_lower_code(ord(char_at(text, pos)))
+        if c == inst.arg1
+            return _vm_step(code, pc + 1, text, pos + 1, text_len, slots, flag_i, flag_m, flag_s, counter)
+        end
+        return null
+    end
+
+    if op == op_any()
+        if pos >= text_len return null end
+        let ch = char_at(text, pos)
+        if inst.arg1 == 1 or ch != "\n"
+            return _vm_step(code, pc + 1, text, pos + 1, text_len, slots, flag_i, flag_m, flag_s, counter)
+        end
+        return null
+    end
+
+    if op == op_class()
+        if pos >= text_len return null end
+        let code_val = ord(char_at(text, pos))
+        if flag_i == 1
+            code_val = to_lower_code(code_val)
+        end
+        let ranges = inst.extra
+        let matched = 0
+        let ri = 0
+        let rcnt = len(ranges)
+        while ri < rcnt
+            let r = ranges[ri]
+            if code_val >= r[0] and code_val <= r[1]
+                matched = 1
+                break
+            end
+            ri += 1
+        end
+
+        if inst.arg1 == 1
+            if matched == 1
+                matched = 0
+            else
+                matched = 1
+            end
+        end
+
+        if matched == 1
+            return _vm_step(code, pc + 1, text, pos + 1, text_len, slots, flag_i, flag_m, flag_s, counter)
+        end
+        return null
+    end
+
+    if op == op_match()
+        let res = []
+        let si = 0
+        let scnt = len(slots)
+        while si < scnt
+            res.push(slots[si])
+            si += 1
+        end
+        return res
+    end
+
+    if op == op_jump()
+        return _vm_step(code, inst.arg1, text, pos, text_len, slots, flag_i, flag_m, flag_s, counter)
+    end
+
+    if op == op_split()
+        let res1 = _vm_step(code, inst.arg1, text, pos, text_len, slots, flag_i, flag_m, flag_s, counter)
+        if res1 != null
+            return res1
+        end
+        return _vm_step(code, inst.arg2, text, pos, text_len, slots, flag_i, flag_m, flag_s, counter)
+    end
+
+    if op == op_save()
+        let slot_idx = inst.arg1
+        let old_val = slots[slot_idx]
+        slots[slot_idx] = pos
+        let res = _vm_step(code, pc + 1, text, pos, text_len, slots, flag_i, flag_m, flag_s, counter)
+        if res != null
+            return res
+        end
+        slots[slot_idx] = old_val
+        return null
+    end
+
+    if op == op_assert_start()
+        let ok = 0
+        if pos == 0
+            ok = 1
+        elif inst.arg1 == 1 and pos > 0 and char_at(text, pos - 1) == "\n"
+            ok = 1
+        end
+        if ok == 1
+            return _vm_step(code, pc + 1, text, pos, text_len, slots, flag_i, flag_m, flag_s, counter)
+        end
+        return null
+    end
+
+    if op == op_assert_end()
+        let ok = 0
+        if pos == text_len
+            ok = 1
+        elif inst.arg1 == 1 and pos < text_len and char_at(text, pos) == "\n"
+            ok = 1
+        end
+        if ok == 1
+            return _vm_step(code, pc + 1, text, pos, text_len, slots, flag_i, flag_m, flag_s, counter)
+        end
+        return null
+    end
+
+    if op == op_assert_word()
+        if check_word_boundary(text, pos, text_len, 1) == 1
+            return _vm_step(code, pc + 1, text, pos, text_len, slots, flag_i, flag_m, flag_s, counter)
+        end
+        return null
+    end
+
+    if op == op_assert_not_word()
+        if check_word_boundary(text, pos, text_len, 0) == 1
+            return _vm_step(code, pc + 1, text, pos, text_len, slots, flag_i, flag_m, flag_s, counter)
+        end
+        return null
+    end
+
+    return null
+end
+
+# Executes regex starting exactly at start_pos
+function vm_exec_at(reg, text, start_pos, text_len)
+    let num_slots = (reg.num_groups + 1) * 2
+    let slots = []
+    let i = 0
+    while i < num_slots
+        slots.push(-1)
+        i += 1
+    end
+    slots[0] = start_pos
+
+    let counter = [0]
+    let result_slots = _vm_step(reg.code, 0, text, start_pos, text_len, slots, reg.flag_i, reg.flag_m, reg.flag_s, counter)
+
+    if result_slots == null
+        return null
+    end
+
+    let m_start = result_slots[0]
+    let m_end = result_slots[1]
+    let m_text = substring(text, m_start, m_end - m_start)
+
+    let groups = [m_text]
+    let spans = [[m_start, m_end]]
+
+    let g = 1
+    while g <= reg.num_groups
+        let gs = result_slots[g * 2]
+        let ge = result_slots[g * 2 + 1]
+        if gs >= 0 and ge >= gs
+            groups.push(substring(text, gs, ge - gs))
+            spans.push([gs, ge])
+        else
+            groups.push("")
+            spans.push([-1, -1])
+        end
+        g += 1
+    end
+
+    return match_new(m_text, m_start, m_end, groups, spans)
+end
+
+# Searches for first match in text starting at or after start_index
+function vm_search(reg, text, start_index = 0)
+    let text_len = len(text)
+    if start_index > text_len
+        return null
+    end
+
+    if reg.is_anchored == 1
+        if start_index > 0
+            return null
+        end
+        return vm_exec_at(reg, text, 0, text_len)
+    end
+
+    let prefix = reg.prefix
+    let plen = len(prefix)
+    let pos = start_index
+
+    while pos <= text_len
+        if plen > 0
+            if pos + plen > text_len
+                return null
+            end
+            if reg.flag_i == 1
+                let sub = to_lower_string(substring(text, pos, plen))
+                if sub != prefix
+                    pos += 1
+                    continue
+                end
+            else
+                let sub = substring(text, pos, plen)
+                if sub != prefix
+                    pos += 1
+                    continue
+                end
+            end
+        end
+
+        let m = vm_exec_at(reg, text, pos, text_len)
+        if m != null
+            return m
+        end
+        pos += 1
+    end
+
+    return null
+end
+
+# Finds all non-overlapping matches in text
+function vm_find_all(reg, text)
+    let matches = []
+    let text_len = len(text)
+    let pos = 0
+
+    while pos <= text_len
+        let m = vm_search(reg, text, pos)
+        if m == null
+            break
+        end
+        matches.push(m)
+        if m.m_end > m.m_start
+            pos = m.m_end
+        else
+            pos = m.m_start + 1
+        end
+    end
+
+    return matches
+end
+
+# Expands replacement templates like $0, $1, $&, $$
+function _expand_replacement(template_str, m)
+    let tlen = len(template_str)
+    let res = ""
+    let i = 0
+
+    while i < tlen
+        let ch = char_at(template_str, i)
+        if ch == "$" and i + 1 < tlen
+            let next_ch = char_at(template_str, i + 1)
+            if next_ch == "$"
+                res += "$"
+                i += 2
+                continue
+            elif next_ch == "&" or next_ch == "0"
+                res += match_text(m)
+                i += 2
+                continue
+            elif is_digit(next_ch) == 1
+                let g_idx = int(next_ch)
+                res += match_group(m, g_idx)
+                i += 2
+                continue
+            end
+        end
+        res += ch
+        i += 1
+    end
+
+    return res
+end
+
+# Replaces matched occurrences with replacement template
+function vm_replace(reg, text, replacement, is_all = 1)
+    let matches = []
+    if is_all == 1
+        matches = vm_find_all(reg, text)
+    else
+        let first_m = vm_search(reg, text, 0)
+        if first_m != null
+            matches.push(first_m)
+        end
+    end
+
+    if len(matches) == 0
+        return text
+    end
+
+    let res = ""
+    let last_idx = 0
+    let mi = 0
+    let mcnt = len(matches)
+
+    while mi < mcnt
+        let m = matches[mi]
+        if m.m_start > last_idx
+            res += substring(text, last_idx, m.m_start - last_idx)
+        end
+        res += _expand_replacement(replacement, m)
+        last_idx = m.m_end
+        mi += 1
+    end
+
+    let text_len = len(text)
+    if last_idx < text_len
+        res += substring(text, last_idx, text_len - last_idx)
+    end
+
+    return res
+end
+
+# Splits text by regex matches
+function vm_split(reg, text, limit = -1)
+    let matches = vm_find_all(reg, text)
+    let mcnt = len(matches)
+    if mcnt == 0
+        return [text]
+    end
+
+    let parts = []
+    let last_idx = 0
+    let mi = 0
+
+    while mi < mcnt
+        if limit > 0 and len(parts) >= limit - 1
+            break
+        end
+        let m = matches[mi]
+        let segment = substring(text, last_idx, m.m_start - last_idx)
+        parts.push(segment)
+        last_idx = m.m_end
+        mi += 1
+    end
+
+    let text_len = len(text)
+    if last_idx <= text_len
+        parts.push(substring(text, last_idx, text_len - last_idx))
+    end
+
+    return parts
+end

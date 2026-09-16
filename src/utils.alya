@@ -1,0 +1,116 @@
+# Character inspection, case folding, and regex escaping utilities
+# Part of the Alya Language package ecosystem (https://github.com/alya-lang)
+
+# Checks if a single character is an ASCII letter [a-zA-Z]
+function is_ascii_letter(ch)
+    if len(ch) == 0 return 0 end
+    let c = ord(ch)
+    if (c >= 65 and c <= 90) or (c >= 97 and c <= 122)
+        return 1
+    end
+    return 0
+end
+
+# Checks if a single character is an ASCII digit [0-9]
+function is_digit(ch)
+    if len(ch) == 0 return 0 end
+    let c = ord(ch)
+    if c >= 48 and c <= 57
+        return 1
+    end
+    return 0
+end
+
+# Checks if a character is a word character [a-zA-Z0-9_]
+function is_word_char(ch)
+    if len(ch) == 0 return 0 end
+    let c = ord(ch)
+    if (c >= 48 and c <= 57) or (c >= 65 and c <= 90) or (c >= 97 and c <= 122) or c == 95
+        return 1
+    end
+    return 0
+end
+
+# Checks if a character is a whitespace character [\s]
+function is_space_char(ch)
+    if len(ch) == 0 return 0 end
+    let c = ord(ch)
+    # space (32), tab (9), newline (10), carriage return (13), form feed (12), vertical tab (11)
+    if c == 32 or c == 9 or c == 10 or c == 13 or c == 11 or c == 12
+        return 1
+    end
+    return 0
+end
+
+# Converts ASCII character code to lowercase if uppercase
+function to_lower_code(code)
+    if code >= 65 and code <= 90
+        return code + 32
+    end
+    return code
+end
+
+# Converts a single character to lowercase
+function to_lower_char(ch)
+    if len(ch) == 0 return "" end
+    let c = ord(ch)
+    if c >= 65 and c <= 90
+        return chr(c + 32)
+    end
+    return ch
+end
+
+# Converts an entire string to lowercase (ASCII)
+function to_lower_string(s)
+    let slen = len(s)
+    let res = ""
+    let i = 0
+    while i < slen
+        res += to_lower_char(char_at(s, i))
+        i += 1
+    end
+    return res
+end
+
+# Checks if a position in text matches word boundary \b or \B
+function check_word_boundary(text, pos, text_len, is_positive)
+    let before_word = 0
+    let after_word = 0
+    if pos > 0
+        before_word = is_word_char(char_at(text, pos - 1))
+    end
+    if pos < text_len
+        after_word = is_word_char(char_at(text, pos))
+    end
+
+    let is_bound = 0
+    if before_word != after_word
+        is_bound = 1
+    end
+
+    if is_positive == 1
+        return is_bound
+    end
+    if is_bound == 1
+        return 0
+    end
+    return 1
+end
+
+# Escapes all regular expression meta-characters in a literal string
+function escape_pattern(str_val)
+    let slen = len(str_val)
+    let res = ""
+    let i = 0
+    while i < slen
+        let ch = char_at(str_val, i)
+        if ch == "\\" or ch == "^" or ch == "$" or ch == "." or ch == "*" or ch == "+" or ch == "?" or ch == "(" or ch == ")" or ch == "[" or ch == "]" or ch == "{" or ch == "}" or ch == "|" or ch == "/" or ch == "-"
+            res += "\\"
+            res += ch
+        else
+            res += ch
+        end
+        i += 1
+    end
+    return res
+end
