@@ -1,0 +1,18 @@
+[package]
+name = "regex"
+version = "0.1.0"
+alya-version = "0.0.17"
+entry = "src/lib.alya"
+description = "Modern regular expression engine with linear-time matching, character classes, and capture groups"
+authors = ["Alya Language Contributors <https://github.com/alya-lang>"]
+license = "MIT"
+homepage = "https://github.com/alya-lang/alya"
+repository = "https://github.com/alya-lang/regex"
+keywords = ["alya", "alya-lang", "package", "regex", "regexp", "pattern", "matcher"]
+
+[dependencies]
+
+# [build]
+# c-sources = ["c/source.c"]
+# c-flags = ["-O2"]
+# c-include-dirs = ["c"]
