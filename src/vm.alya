@@ -6,7 +6,7 @@ import "./utils.alya"
 
 # Evaluates instruction step with backtracking
 function _vm_step(code, pc, text, pos, text_len, slots, flag_i, flag_m, flag_s, counter)
-    # Protection against infinite loops
+    # Protection against catastrophic backtracking / infinite loops
     counter[0] += 1
     if counter[0] > 1000000
         return null
@@ -25,7 +25,16 @@ function _vm_step(code, pc, text, pos, text_len, slots, flag_i, flag_m, flag_s, 
 
     if op == op_char_ci()
         if pos >= text_len return null end
-        let c = to_lower_code(ord(char_at(text, pos)))
+        let b0 = ord(char_at(text, pos))
+        # Handle Turkish İ (UTF-8 [196, 176]) matching lowercase 'i' (105)
+        if inst.arg1 == 105 and b0 == 196
+            if pos + 1 < text_len
+                if ord(char_at(text, pos + 1)) == 176
+                    return _vm_step(code, pc + 1, text, pos + 2, text_len, slots, flag_i, flag_m, flag_s, counter)
+                end
+            end
+        end
+        let c = to_lower_code(b0)
         if c == inst.arg1
             return _vm_step(code, pc + 1, text, pos + 1, text_len, slots, flag_i, flag_m, flag_s, counter)
         end
@@ -47,7 +56,7 @@ function _vm_step(code, pc, text, pos, text_len, slots, flag_i, flag_m, flag_s, 
         if flag_i == 1
             code_val = to_lower_code(code_val)
         end
-        let ranges = inst.extra
+        let ranges = inst.inst_sub
         let matched = 0
         let ri = 0
         let rcnt = len(ranges)
@@ -72,6 +81,66 @@ function _vm_step(code, pc, text, pos, text_len, slots, flag_i, flag_m, flag_s, 
             return _vm_step(code, pc + 1, text, pos + 1, text_len, slots, flag_i, flag_m, flag_s, counter)
         end
         return null
+    end
+
+    if op == op_backref()
+        let gid = inst.arg1
+        let gs = slots[gid * 2]
+        let ge = slots[gid * 2 + 1]
+        if gs < 0 or ge < gs
+            return null
+        end
+        let ref_len = ge - gs
+        if pos + ref_len > text_len
+            return null
+        end
+        if ref_len > 0
+            if flag_i == 1
+                let s1 = to_lower_string(substring(text, pos, ref_len))
+                let s2 = to_lower_string(substring(text, gs, ref_len))
+                if s1 != s2 return null end
+            else
+                let s1 = substring(text, pos, ref_len)
+                let s2 = substring(text, gs, ref_len)
+                if s1 != s2 return null end
+            end
+        end
+        return _vm_step(code, pc + 1, text, pos + ref_len, text_len, slots, flag_i, flag_m, flag_s, counter)
+    end
+
+    if op == op_lookahead()
+        let is_positive = inst.arg1
+        let sub_slots = [pos, -1]
+        let sub_res = _vm_step(inst.inst_sub, 0, text, pos, text_len, sub_slots, flag_i, flag_m, flag_s, [0])
+        if is_positive == 1
+            if sub_res == null return null end
+        else
+            if sub_res != null return null end
+        end
+        return _vm_step(code, pc + 1, text, pos, text_len, slots, flag_i, flag_m, flag_s, counter)
+    end
+
+    if op == op_lookbehind()
+        let is_positive = inst.arg1
+        let matched = 0
+        let test_start = 0
+        while test_start <= pos
+            let sub_slots = [test_start, -1]
+            let sub_res = _vm_step(inst.inst_sub, 0, text, test_start, text_len, sub_slots, flag_i, flag_m, flag_s, [0])
+            if sub_res != null
+                if sub_res[1] == pos
+                    matched = 1
+                    break
+                end
+            end
+            test_start += 1
+        end
+        if is_positive == 1
+            if matched == 0 return null end
+        else
+            if matched == 1 return null end
+        end
+        return _vm_step(code, pc + 1, text, pos, text_len, slots, flag_i, flag_m, flag_s, counter)
     end
 
     if op == op_match()
@@ -191,7 +260,7 @@ function vm_exec_at(reg, text, start_pos, text_len)
         g += 1
     end
 
-    return match_new(m_text, m_start, m_end, groups, spans)
+    return match_new(m_text, m_start, m_end, groups, spans, reg.named_groups)
 end
 
 # Searches for first match in text starting at or after start_index
@@ -264,7 +333,7 @@ function vm_find_all(reg, text)
     return matches
 end
 
-# Expands replacement templates like $0, $1, $&, $$
+# Expands replacement templates like $0, $1, ${name}, $&, $$
 function _expand_replacement(template_str, m)
     let tlen = len(template_str)
     let res = ""
@@ -287,6 +356,20 @@ function _expand_replacement(template_str, m)
                 res += match_group(m, g_idx)
                 i += 2
                 continue
+            elif next_ch == "{" or next_ch == "<"
+                let close_ch = "}"
+                if next_ch == "<" close_ch = ">" end
+                let name = ""
+                let ni = i + 2
+                while ni < tlen and char_at(template_str, ni) != close_ch
+                    name += char_at(template_str, ni)
+                    ni += 1
+                end
+                if ni < tlen and char_at(template_str, ni) == close_ch
+                    res += match_named(m, name)
+                    i = ni + 1
+                    continue
+                end
             end
         end
         res += ch

@@ -14,6 +14,9 @@ let OP_ASSERT_START = 9      # ^ (start of text or line)
 let OP_ASSERT_END = 10       # $ (end of text or line)
 let OP_ASSERT_WORD = 11      # \b (word boundary)
 let OP_ASSERT_NOT_WORD = 12  # \B (non-word boundary)
+let OP_BACKREF = 13          # \1..\9 backreference to captured group: arg1 = gid
+let OP_LOOKAHEAD = 14        # (?=...) or (?!...): arg1 = is_positive, extra = sub_code
+let OP_LOOKBEHIND = 15       # (?<=...) or (?<!...): arg1 = is_positive, extra = sub_code
 
 # Opcode getters for function scopes
 function op_char() return 1 end
@@ -28,6 +31,9 @@ function op_assert_start() return 9 end
 function op_assert_end() return 10 end
 function op_assert_word() return 11 end
 function op_assert_not_word() return 12 end
+function op_backref() return 13 end
+function op_lookahead() return 14 end
+function op_lookbehind() return 15 end
 
 # AST Node Kind constants
 let AST_EMPTY = 0
@@ -42,6 +48,8 @@ let AST_CONCAT = 8
 let AST_ALT = 9
 let AST_GROUP = 10
 let AST_QUANTIFIER = 11
+let AST_BACKREF = 12
+let AST_LOOKAROUND = 13
 
 function ast_kind_empty() return 0 end
 function ast_kind_literal() return 1 end
@@ -55,21 +63,23 @@ function ast_kind_concat() return 8 end
 function ast_kind_alt() return 9 end
 function ast_kind_group() return 10 end
 function ast_kind_quantifier() return 11 end
+function ast_kind_backref() return 12 end
+function ast_kind_lookaround() return 13 end
 
 # Struct representing a single virtual machine instruction
 struct Instruction
     op
     arg1
     arg2
-    extra
+    inst_sub
 end
 
-function inst_new(op, arg1 = 0, arg2 = 0, extra = null)
+function inst_new(op, arg1 = 0, arg2 = 0, inst_sub = null)
     return Instruction {
         op: op,
         arg1: arg1,
         arg2: arg2,
-        extra: extra
+        inst_sub: inst_sub
     }
 end
 
@@ -78,17 +88,19 @@ struct AstNode
     kind
     val1
     val2
-    extra
+    node_data
     children
+    group_name
 end
 
-function ast_node_new(kind, val1 = 0, val2 = 0, extra = null, children = null)
+function ast_node_new(kind, val1 = 0, val2 = 0, node_data = null, children = null, group_name = "")
     return AstNode {
         kind: kind,
         val1: val1,
         val2: val2,
-        extra: extra,
-        children: children
+        node_data: node_data,
+        children: children,
+        group_name: group_name
     }
 end
 
@@ -103,9 +115,11 @@ struct Regex
     flag_i
     flag_m
     flag_s
+    named_groups
+    group_names
 end
 
-function regex_new(pattern, flags, code, num_groups, is_anchored, prefix, flag_i, flag_m, flag_s)
+function regex_new(pattern, flags, code, num_groups, is_anchored, prefix, flag_i, flag_m, flag_s, named_groups = {}, group_names = {})
     return Regex {
         pattern: pattern,
         flags: flags,
@@ -115,7 +129,9 @@ function regex_new(pattern, flags, code, num_groups, is_anchored, prefix, flag_i
         prefix: prefix,
         flag_i: flag_i,
         flag_m: flag_m,
-        flag_s: flag_s
+        flag_s: flag_s,
+        named_groups: named_groups,
+        group_names: group_names
     }
 end
 
@@ -126,15 +142,17 @@ struct Match
     m_end
     m_groups
     m_spans
+    m_named_groups
 end
 
-function match_new(text, start_pos, end_pos, groups = [], spans = [])
+function match_new(text, start_pos, end_pos, groups = [], spans = [], named_groups = {})
     return Match {
         m_text: text,
         m_start: start_pos,
         m_end: end_pos,
         m_groups: groups,
-        m_spans: spans
+        m_spans: spans,
+        m_named_groups: named_groups
     }
 end
 
@@ -162,8 +180,21 @@ end
 function match_group(m, idx = 0)
     if m == null return "" end
     let groups = m.m_groups
-    if idx >= 0 and idx < len(groups)
-        return groups[idx]
+    let i = int(idx)
+    if i >= 0 and i < len(groups)
+        return groups[i]
+    end
+    return ""
+end
+
+function match_named(m, name)
+    if m == null return "" end
+    let named = m.m_named_groups
+    if named != null
+        if has(named, name) == 1
+            let g_idx = named[name]
+            return match_group(m, g_idx)
+        end
     end
     return ""
 end

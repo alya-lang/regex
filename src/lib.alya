@@ -114,3 +114,8 @@ end
 function escape(str_val)
     return escape_pattern(str_val)
 end
+
+# Retrieves captured group text by its name
+function get_named(m, name)
+    return match_named(m, name)
+end

@@ -62,7 +62,7 @@ function _c_compile_node(c, node)
     end
 
     if kind == ast_kind_class()
-        _c_emit(c, inst_new(op_class(), node.val1, 0, node.extra))
+        _c_emit(c, inst_new(op_class(), node.val1, 0, node.node_data))
         return 0
     end
 
@@ -83,6 +83,27 @@ function _c_compile_node(c, node)
 
     if kind == ast_kind_not_word_boundary()
         _c_emit(c, inst_new(op_assert_not_word()))
+        return 0
+    end
+
+    if kind == ast_kind_backref()
+        _c_emit(c, inst_new(op_backref(), node.val1))
+        return 0
+    end
+
+    if kind == ast_kind_lookaround()
+        let sub_c = compiler_state_new(c.flag_i, c.flag_m, c.flag_s)
+        _c_compile_node(sub_c, node.children[0])
+        _c_emit(sub_c, inst_new(op_save(), 1))
+        _c_emit(sub_c, inst_new(op_match()))
+
+        let dir = node.val1 # 0: lookahead, 1: lookbehind
+        let is_positive = node.val2
+        if dir == 0
+            _c_emit(c, inst_new(op_lookahead(), is_positive, 0, sub_c.instructions))
+        else
+            _c_emit(c, inst_new(op_lookbehind(), is_positive, 0, sub_c.instructions))
+        end
         return 0
     end
 
@@ -148,7 +169,7 @@ function _c_compile_node(c, node)
     if kind == ast_kind_quantifier()
         let min_q = node.val1
         let max_q = node.val2
-        let is_lazy = node.extra
+        let is_lazy = node.node_data
         let inner = node.children[0]
 
         # Emit mandatory minimum repetitions
@@ -250,6 +271,8 @@ function compile_regex(pattern, flags = "")
     let flag_i = parsed[2]
     let flag_m = parsed[3]
     let flag_s = parsed[4]
+    let named_groups = parsed[5]
+    let group_names = parsed[6]
 
     let c = compiler_state_new(flag_i, flag_m, flag_s)
 
@@ -261,7 +284,10 @@ function compile_regex(pattern, flags = "")
     _c_emit(c, inst_new(op_match()))
 
     let is_anchored = _check_is_anchored(ast, flag_m)
-    let prefix = _extract_literal_prefix(ast, flag_i)
+    let prefix = ""
+    if flag_i == 0
+        prefix = _extract_literal_prefix(ast, 0)
+    end
 
-    return regex_new(pattern, flags, c.instructions, group_count, is_anchored, prefix, flag_i, flag_m, flag_s)
+    return regex_new(pattern, flags, c.instructions, group_count, is_anchored, prefix, flag_i, flag_m, flag_s, named_groups, group_names)
 end

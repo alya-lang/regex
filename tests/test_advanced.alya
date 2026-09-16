@@ -1,0 +1,132 @@
+# Comprehensive test suite for regex advanced features:
+# 1. Named Capture Groups
+# 2. Hex and Unicode Escapes
+# 3. Lookaround Assertions
+# 4. Backreferences
+# 5. Unicode Property Classes & Turkish Case-Folding
+
+import "std/test"
+import "../src/lib.alya" as re
+
+function main()
+    test_suite("regex Advanced Features")
+    let r = runner_new()
+
+    # ═══════════════════════════════════════════════════════════════
+    # 1. Named Capture Groups
+    # ═══════════════════════════════════════════════════════════════
+    let r_date = re::compile("(?<year>\\d{{4}})-(?<month>\\d{{2}})-(?<day>\\d{{2}})")
+    let m_date = re::find(r_date, "Date: 2026-09-16")
+    runner_assert_eq(r, m_date != null, 1, "named groups match found")
+    runner_assert_str_eq(r, re::get_named(m_date, "year"), "2026", "named capture: year")
+    runner_assert_str_eq(r, re::get_named(m_date, "month"), "09", "named capture: month")
+    runner_assert_str_eq(r, re::get_named(m_date, "day"), "16", "named capture: day")
+
+    # Python-style named capture (?P<name>...)
+    let r_py = re::compile("(?P<first>\\w+)\\s+(?P<last>\\w+)")
+    let m_py = re::find(r_py, "Alan Turing")
+    runner_assert_eq(r, m_py != null, 1, "python-style named capture found")
+    runner_assert_str_eq(r, re::get_named(m_py, "first"), "Alan", "named capture: first")
+    runner_assert_str_eq(r, re::get_named(m_py, "last"), "Turing", "named capture: last")
+
+    # Replacement with ${name}
+    let rep_named = re::replace(r_date, "Date: 2026-09-16", "${{day}}/${{month}}/${{year}}")
+    runner_assert_str_eq(r, rep_named, "Date: 16/09/2026", "named replacement with dollar-brace syntax")
+
+    # Replacement with $<name>
+    let rep_py = re::replace(r_py, "Alan Turing", "$<last>, $<first>")
+    runner_assert_str_eq(r, rep_py, "Turing, Alan", "named replacement with dollar-angle syntax")
+
+    # ═══════════════════════════════════════════════════════════════
+    # 2. Hex and Unicode Escapes
+    # ═══════════════════════════════════════════════════════════════
+    let r_hex = re::compile("\\x41\\x42\\x43")
+    runner_assert_eq(r, re::is_match(r_hex, "ABC"), 1, "\\xHH matches ASCII chars ABC")
+    runner_assert_eq(r, re::is_match(r_hex, "ABD"), 0, "\\xHH rejects mismatched char")
+
+    let r_uni = re::compile("\\u0041\\u0042")
+    runner_assert_eq(r, re::is_match(r_uni, "AB"), 1, "\\uHHHH matches AB")
+
+    let r_hex_class = re::compile("^[\\x30-\\x39]+$")
+    runner_assert_eq(r, re::is_match(r_hex_class, "12345"), 1, "hex range in class [\\x30-\\x39]")
+    runner_assert_eq(r, re::is_match(r_hex_class, "123a5"), 0, "hex range rejects out-of-range")
+
+    # ═══════════════════════════════════════════════════════════════
+    # 3. Lookaround Assertions
+    # ═══════════════════════════════════════════════════════════════
+    # Positive lookahead: digits followed by px
+    let r_pla = re::compile("\\d+(?=px)")
+    let m_pla = re::find(r_pla, "width: 120px, height: 80em")
+    runner_assert_eq(r, m_pla != null, 1, "positive lookahead (?=...) matches")
+    runner_assert_str_eq(r, re::match_text(m_pla), "120", "positive lookahead does not consume assertion")
+
+    # Negative lookahead: digits NOT followed by px
+    let r_nla = re::compile("\\d+(?!px)")
+    let m_nla = re::find(r_nla, "height: 80em")
+    runner_assert_eq(r, m_nla != null, 1, "negative lookahead (?!...) matches non-px")
+    runner_assert_str_eq(r, re::match_text(m_nla), "80", "negative lookahead matched digits")
+
+    # Positive lookbehind: digits preceded by $
+    let r_plb = re::compile("(?<=\\$)\\d+")
+    let m_plb = re::find(r_plb, "price: $49 and €99")
+    runner_assert_eq(r, m_plb != null, 1, "positive lookbehind (?<=...) matches")
+    runner_assert_str_eq(r, re::match_text(m_plb), "49", "positive lookbehind matched price after $")
+
+    # Negative lookbehind: digits NOT preceded by $
+    let r_nlb = re::compile("(?<!\\$)\\b\\d+\\b")
+    let m_nlb = re::find(r_nlb, "$49 and 99")
+    runner_assert_eq(r, m_nlb != null, 1, "negative lookbehind (?<!...) matches")
+    runner_assert_str_eq(r, re::match_text(m_nlb), "99", "negative lookbehind skips $49 and matches 99")
+
+    # ═══════════════════════════════════════════════════════════════
+    # 4. Backreferences
+    # ═══════════════════════════════════════════════════════════════
+    # Numbered backreference: matching doubled character
+    let r_double = re::compile("([a-z])\\1")
+    runner_assert_eq(r, re::is_match(r_double, "book"), 1, "backreference \\1 matches doubled oo")
+    runner_assert_eq(r, re::is_match(r_double, "boke"), 0, "backreference \\1 rejects non-doubled")
+
+    # Matching quotes with backreference
+    let r_quote = re::compile("([\"'])(.*?)\\1")
+    let m_quote = re::find(r_quote, "say 'hello world' inside")
+    runner_assert_eq(r, m_quote != null, 1, "backreference matching quotes")
+    runner_assert_str_eq(r, re::match_text(m_quote), "'hello world'", "matched single-quoted string")
+    runner_assert_str_eq(r, re::match_group(m_quote, 2), "hello world", "inner text captured")
+
+    # Named backreference \k<name>
+    let r_kname = re::compile("(?<tag>\\w+)>.*?</\\k<tag>>")
+    runner_assert_eq(r, re::is_match(r_kname, "<b>bold</b>"), 1, "named backreference \\k<tag> matches")
+    runner_assert_eq(r, re::is_match(r_kname, "<b>bold</i>"), 0, "named backreference \\k<tag> rejects mismatch")
+
+    # ═══════════════════════════════════════════════════════════════
+    # 5. Unicode Property Classes & Turkish Case-Folding
+    # ═══════════════════════════════════════════════════════════════
+    # \p{L} matches letters (ASCII + Turkish/Extended Latin)
+    let r_prop_l = re::compile("^\\p{{L}}+$")
+    runner_assert_eq(r, re::is_match(r_prop_l, "Alya"), 1, "pL matches ASCII word")
+    runner_assert_eq(r, re::is_match(r_prop_l, "türkçe"), 1, "pL matches Turkish word 'türkçe'")
+    runner_assert_eq(r, re::is_match(r_prop_l, "İstanbul"), 1, "pL matches Turkish 'İstanbul'")
+    runner_assert_eq(r, re::is_match(r_prop_l, "123"), 0, "pL rejects digits")
+
+    # \p{N} matches numbers
+    let r_prop_n = re::compile("^\\p{{N}}+$")
+    runner_assert_eq(r, re::is_match(r_prop_n, "123456"), 1, "pN matches digits")
+    runner_assert_eq(r, re::is_match(r_prop_n, "123a45"), 0, "pN rejects letters")
+
+    # Turkish case-folding with 'i' flag
+    let r_tr_i = re::compile("şeker", "i")
+    runner_assert_eq(r, re::is_match(r_tr_i, "ŞEKER"), 1, "Turkish case-folding: şeker == ŞEKER")
+
+    let r_tr_c = re::compile("çocuk", "i")
+    runner_assert_eq(r, re::is_match(r_tr_c, "ÇOCUK"), 1, "Turkish case-folding: çocuk == ÇOCUK")
+
+    let r_tr_o = re::compile("öğrenci", "i")
+    runner_assert_eq(r, re::is_match(r_tr_o, "ÖĞRENCİ"), 1, "Turkish case-folding: öğrenci == ÖĞRENCİ")
+
+    let failed = runner_summary(r)
+    if failed > 0
+        exit(1)
+    end
+end
+
+main()

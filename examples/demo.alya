@@ -80,7 +80,61 @@ function main()
         say "    [" + str(t) + "] => '" + items[t] + "'"
         t += 1
     end
+    # 6. Named Capture Groups & Template Replacement
+    say "[6] Named Capture Groups & Replacement:"
+    let log_pattern = "(?<ip>\\d+\\.\\d+\\.\\d+\\.\\d+)\\s+\\[(?<method>[A-Z]+)\\]\\s+(?<path>\\S+)"
+    let log_line = "192.168.1.42 [GET] /api/v1/users"
+    let log_m = re::find(re::compile(log_pattern), log_line)
+    if log_m != null
+        say "  Log entry: " + log_line
+        say "  IP:        " + re::get_named(log_m, "ip")
+        say "  Method:    " + re::get_named(log_m, "method")
+        say "  Path:      " + re::get_named(log_m, "path")
+    end
+    let reformatted = re::replace(re::compile(log_pattern), log_line, "$<method> request from $<ip> to $<path>")
+    say "  Reformat:  " + reformatted
     say ""
+
+    # 7. Lookaround Assertions
+    say "[7] Lookaround Assertions (Lookahead & Lookbehind):"
+    let css = "font-size: 14px; margin: 10em; padding: 24px;"
+    let px_reg = re::compile("\\d+(?=px)")
+    let px_matches = re::find_all(px_reg, css)
+    say "  CSS values with px (without consuming 'px'):"
+    let pi = 0
+    while pi < len(px_matches)
+        say "    • " + re::match_text(px_matches[pi]) + " (start=" + str(re::match_start(px_matches[pi])) + ")"
+        pi += 1
+    end
+    say ""
+
+    # 8. Backreferences
+    say "[8] Backreferences (Numbered & Named):"
+    let html = "<div>content</div> and <b>bold text</b> and <span>oops</i>"
+    let tag_reg = re::compile("<(?<tag>\\w+)>(.*?)</\\k<tag>>")
+    let tag_matches = re::find_all(tag_reg, html)
+    say "  Matched valid HTML tags:"
+    let ti = 0
+    while ti < len(tag_matches)
+        say "    • " + re::match_text(tag_matches[ti]) + " => Tag: <" + re::get_named(tag_matches[ti], "tag") + ">"
+        ti += 1
+    end
+    say ""
+
+    # 9. Unicode Property Classes & Turkish Case-Folding
+    say "[9] Unicode Properties & Turkish Case-Folding:"
+    let tr_reg = re::compile("^\\p{{L}}+$")
+    let words = ["Alya", "türkçe", "İstanbul", "12345"]
+    let wi = 0
+    while wi < len(words)
+        let w = words[wi]
+        say "  \\p{{L}} test on '" + w + "': " + str(re::is_match(tr_reg, w))
+        wi += 1
+    end
+    let ci_reg = re::compile("öğrenci", "i")
+    say "  Case-insensitive Turkish 'öğrenci' matches 'ÖĞRENCİ': " + str(re::is_match(ci_reg, "ÖĞRENCİ"))
+    say ""
+
     say "All examples finished successfully!"
 end
 

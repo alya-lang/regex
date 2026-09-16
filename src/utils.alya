@@ -21,11 +21,59 @@ function is_digit(ch)
     return 0
 end
 
+# Checks if a single character is a hexadecimal digit [0-9a-fA-F]
+function is_hex_digit(ch)
+    if len(ch) == 0 return 0 end
+    let c = ord(ch)
+    if (c >= 48 and c <= 57) or (c >= 65 and c <= 70) or (c >= 97 and c <= 102)
+        return 1
+    end
+    return 0
+end
+
+# Returns numeric integer value of a hexadecimal character
+function hex_char_val(ch)
+    if len(ch) == 0 return 0 end
+    let c = ord(ch)
+    if c >= 48 and c <= 57
+        return c - 48
+    elif c >= 65 and c <= 70
+        return c - 55
+    elif c >= 97 and c <= 102
+        return c - 87
+    end
+    return 0
+end
+
+# Converts a Unicode code point to a list of UTF-8 byte integers
+function codepoint_to_utf8(cp)
+    if cp < 128
+        return [cp]
+    elif cp < 2048
+        return [192 + (cp / 64), 128 + (cp % 64)]
+    elif cp < 65536
+        let b1 = 224 + (cp / 4096)
+        let b2 = 128 + ((cp / 64) % 64)
+        let b3 = 128 + (cp % 64)
+        return [b1, b2, b3]
+    else
+        let b1 = 240 + (cp / 262144)
+        let b2 = 128 + ((cp / 4096) % 64)
+        let b3 = 128 + ((cp / 64) % 64)
+        let b4 = 128 + (cp % 64)
+        return [b1, b2, b3, b4]
+    end
+end
+
 # Checks if a character is a word character [a-zA-Z0-9_]
 function is_word_char(ch)
     if len(ch) == 0 return 0 end
     let c = ord(ch)
     if (c >= 48 and c <= 57) or (c >= 65 and c <= 90) or (c >= 97 and c <= 122) or c == 95
+        return 1
+    end
+    # Include common Latin/Turkish single-byte or lead bytes
+    if c >= 192 and c <= 255
         return 1
     end
     return 0
@@ -42,9 +90,26 @@ function is_space_char(ch)
     return 0
 end
 
-# Converts ASCII character code to lowercase if uppercase
+# Converts character code to lowercase with extended Latin and Turkish support
 function to_lower_code(code)
     if code >= 65 and code <= 90
+        return code + 32
+    end
+    # Turkish UTF-8 second byte mappings:
+    # Ş ([197, 158]) -> ş ([197, 159])
+    # Ğ ([196, 158]) -> ğ ([196, 159])
+    if code == 158 return 159 end
+    # Ç ([195, 135]) -> ç ([195, 167])
+    if code == 135 return 167 end
+    # Ö ([195, 150]) -> ö ([195, 182])
+    if code == 150 return 182 end
+    # Ü ([195, 156]) -> ü ([195, 188])
+    if code == 156 return 188 end
+    # Latin-1 single-byte mappings (if text is 8-bit encoded)
+    if code >= 192 and code <= 214
+        return code + 32
+    end
+    if code >= 216 and code <= 222
         return code + 32
     end
     return code
@@ -54,13 +119,14 @@ end
 function to_lower_char(ch)
     if len(ch) == 0 return "" end
     let c = ord(ch)
-    if c >= 65 and c <= 90
-        return chr(c + 32)
+    let lc = to_lower_code(c)
+    if lc != c
+        return chr(lc)
     end
     return ch
 end
 
-# Converts an entire string to lowercase (ASCII)
+# Converts an entire string to lowercase
 function to_lower_string(s)
     let slen = len(s)
     let res = ""

@@ -13,6 +13,8 @@ struct ParserState
     flag_i
     flag_m
     flag_s
+    named_groups
+    group_names
 end
 
 function parser_state_new(pattern, flags = "")
@@ -37,7 +39,9 @@ function parser_state_new(pattern, flags = "")
         flags: flags,
         flag_i: flag_i,
         flag_m: flag_m,
-        flag_s: flag_s
+        flag_s: flag_s,
+        named_groups: {},
+        group_names: {}
     }
 end
 
@@ -117,26 +121,96 @@ function _p_parse_atom(p)
         return ast_node_new(ast_kind_any())
     end
 
+    # Grouping, Captures, Named Groups, Non-capturing, and Lookarounds
     if ch == "("
-        _p_next(p)
-        let is_capturing = 1
-        if _p_peek(p) == "?" and p.pos + 1 < p.len and char_at(p.pattern, p.pos + 1) == ":"
-            _p_next(p)
-            _p_next(p)
-            is_capturing = 0
+        _p_next(p) # consume "("
+
+        if _p_peek(p) == "?"
+            _p_next(p) # consume "?"
+            let next_ch = _p_peek(p)
+
+            # Non-capturing group: (?:...)
+            if next_ch == ":"
+                _p_next(p) # consume ":"
+                let inner = _p_parse_alternation(p)
+                if _p_peek(p) == ")" _p_next(p) end
+                return ast_node_new(ast_kind_group(), 0, 0, null, [inner])
+            end
+
+            # Positive Lookahead: (?=...)
+            if next_ch == "="
+                _p_next(p) # consume "="
+                let inner = _p_parse_alternation(p)
+                if _p_peek(p) == ")" _p_next(p) end
+                return ast_node_new(ast_kind_lookaround(), 0, 1, null, [inner])
+            end
+
+            # Negative Lookahead: (?!...)
+            if next_ch == "!"
+                _p_next(p) # consume "!"
+                let inner = _p_parse_alternation(p)
+                if _p_peek(p) == ")" _p_next(p) end
+                return ast_node_new(ast_kind_lookaround(), 0, 0, null, [inner])
+            end
+
+            # Lookbehinds: (?<=...) and (?<!...) OR Named group: (?<name>...)
+            if next_ch == "<"
+                _p_next(p) # consume "<"
+                let look_type = _p_peek(p)
+                if look_type == "="
+                    _p_next(p) # consume "="
+                    let inner = _p_parse_alternation(p)
+                    if _p_peek(p) == ")" _p_next(p) end
+                    return ast_node_new(ast_kind_lookaround(), 1, 1, null, [inner])
+                elif look_type == "!"
+                    _p_next(p) # consume "!"
+                    let inner = _p_parse_alternation(p)
+                    if _p_peek(p) == ")" _p_next(p) end
+                    return ast_node_new(ast_kind_lookaround(), 1, 0, null, [inner])
+                else
+                    # Named capture group: (?<name>...)
+                    let name = ""
+                    while _p_has_more(p) and _p_peek(p) != ">"
+                        name += _p_next(p)
+                    end
+                    if _p_peek(p) == ">" _p_next(p) end
+                    p.group_count += 1
+                    let gid = p.group_count
+                    p.named_groups[name] = gid
+                    p.group_names[str(gid)] = name
+                    let inner = _p_parse_alternation(p)
+                    if _p_peek(p) == ")" _p_next(p) end
+                    return ast_node_new(ast_kind_group(), gid, 1, null, [inner], name)
+                end
+            end
+
+            # Python-style named group: (?P<name>...)
+            if next_ch == "P" and p.pos + 1 < p.len and char_at(p.pattern, p.pos + 1) == "<"
+                _p_next(p) # consume "P"
+                _p_next(p) # consume "<"
+                let name = ""
+                while _p_has_more(p) and _p_peek(p) != ">"
+                    name += _p_next(p)
+                end
+                if _p_peek(p) == ">" _p_next(p) end
+                p.group_count += 1
+                let gid = p.group_count
+                p.named_groups[name] = gid
+                p.group_names[str(gid)] = name
+                let inner = _p_parse_alternation(p)
+                if _p_peek(p) == ")" _p_next(p) end
+                return ast_node_new(ast_kind_group(), gid, 1, null, [inner], name)
+            end
         end
 
-        let gid = 0
-        if is_capturing == 1
-            p.group_count += 1
-            gid = p.group_count
-        end
-
+        # Standard numbered capturing group: (...)
+        p.group_count += 1
+        let gid = p.group_count
         let inner = _p_parse_alternation(p)
         if _p_peek(p) == ")"
             _p_next(p)
         end
-        return ast_node_new(ast_kind_group(), gid, is_capturing, null, [inner])
+        return ast_node_new(ast_kind_group(), gid, 1, null, [inner])
     end
 
     if ch == "["
@@ -155,13 +229,20 @@ function _p_parse_atom(p)
     _p_next(p)
     let code = ord(ch)
     if p.flag_i == 1
+        if code == 196 and _p_has_more(p)
+            if ord(_p_peek(p)) == 176
+                _p_next(p)
+                code = 105
+            end
+        end
         code = to_lower_code(code)
     end
     return ast_node_new(ast_kind_literal(), code)
 end
 
-# Parses escape sequence \d, \w, \s, \b, \n, etc.
+# Parses escape sequence \d, \w, \s, \b, \1..\9, \xHH, \uHHHH, \p{L}, etc.
 function _p_parse_escape(p, esc)
+    # Shorthand character classes
     if esc == "d"
         return ast_node_new(ast_kind_class(), 0, 0, [[48, 57]])
     end
@@ -169,10 +250,10 @@ function _p_parse_escape(p, esc)
         return ast_node_new(ast_kind_class(), 1, 0, [[48, 57]])
     end
     if esc == "w"
-        return ast_node_new(ast_kind_class(), 0, 0, [[48, 57], [65, 90], [95, 95], [97, 122]])
+        return ast_node_new(ast_kind_class(), 0, 0, [[48, 57], [65, 90], [95, 95], [97, 122], [128, 255]])
     end
     if esc == "W"
-        return ast_node_new(ast_kind_class(), 1, 0, [[48, 57], [65, 90], [95, 95], [97, 122]])
+        return ast_node_new(ast_kind_class(), 1, 0, [[48, 57], [65, 90], [95, 95], [97, 122], [128, 255]])
     end
     if esc == "s"
         return ast_node_new(ast_kind_class(), 0, 0, [[9, 13], [32, 32]])
@@ -180,24 +261,91 @@ function _p_parse_escape(p, esc)
     if esc == "S"
         return ast_node_new(ast_kind_class(), 1, 0, [[9, 13], [32, 32]])
     end
+
+    # Word boundaries
     if esc == "b"
         return ast_node_new(ast_kind_word_boundary())
     end
     if esc == "B"
         return ast_node_new(ast_kind_not_word_boundary())
     end
-    if esc == "n"
-        return ast_node_new(ast_kind_literal(), 10)
+
+    # Backreferences: \1 through \9
+    let esc_code = ord(esc)
+    if esc_code >= 49 and esc_code <= 57
+        return ast_node_new(ast_kind_backref(), esc_code - 48)
     end
-    if esc == "r"
-        return ast_node_new(ast_kind_literal(), 13)
+
+    # Named backreference: \k<name>
+    if esc == "k" and _p_peek(p) == "<"
+        _p_next(p) # consume "<"
+        let name = ""
+        while _p_has_more(p) and _p_peek(p) != ">"
+            name += _p_next(p)
+        end
+        if _p_peek(p) == ">" _p_next(p) end
+        if p.named_groups[name] != null
+            let gid = p.named_groups[name]
+            return ast_node_new(ast_kind_backref(), gid)
+        end
     end
-    if esc == "t"
-        return ast_node_new(ast_kind_literal(), 9)
+
+    # Hex byte escape: \xHH
+    if esc == "x" and _p_has_more(p)
+        let h1 = _p_next(p)
+        let h2 = ""
+        if _p_has_more(p) h2 = _p_next(p) end
+        let code = hex_char_val(h1) * 16 + hex_char_val(h2)
+        if p.flag_i == 1 code = to_lower_code(code) end
+        return ast_node_new(ast_kind_literal(), code)
     end
-    if esc == "0"
-        return ast_node_new(ast_kind_literal(), 0)
+
+    # Unicode codepoint escape: \uHHHH
+    if esc == "u" and _p_has_more(p)
+        let h1 = _p_next(p)
+        let h2 = _p_next(p)
+        let h3 = _p_next(p)
+        let h4 = _p_next(p)
+        let cp = hex_char_val(h1) * 4096 + hex_char_val(h2) * 256 + hex_char_val(h3) * 16 + hex_char_val(h4)
+        let bytes = codepoint_to_utf8(cp)
+        if len(bytes) == 1
+            let c = bytes[0]
+            if p.flag_i == 1 c = to_lower_code(c) end
+            return ast_node_new(ast_kind_literal(), c)
+        else
+            let nodes = []
+            let bi = 0
+            while bi < len(bytes)
+                nodes.push(ast_node_new(ast_kind_literal(), bytes[bi]))
+                bi += 1
+            end
+            return ast_node_new(ast_kind_concat(), 0, 0, null, nodes)
+        end
     end
+
+    # Unicode Property Classes: \p{L}, \p{Letter}, \p{N}, \p{Number}, etc.
+    if (esc == "p" or esc == "P") and _p_peek(p) == "{"
+        _p_next(p) # consume "{"
+        let prop = ""
+        while _p_has_more(p) and _p_peek(p) != "}"
+            prop += _p_next(p)
+        end
+        if _p_peek(p) == "}" _p_next(p) end
+        let negated = 0
+        if esc == "P" negated = 1 end
+
+        if prop == "L" or prop == "Letter"
+            return ast_node_new(ast_kind_class(), negated, 0, [[65, 90], [97, 122], [128, 255]])
+        elif prop == "N" or prop == "Number" or prop == "d" or prop == "digit"
+            return ast_node_new(ast_kind_class(), negated, 0, [[48, 57]])
+        end
+    end
+
+    # Standard control escapes
+    if esc == "n" return ast_node_new(ast_kind_literal(), 10) end
+    if esc == "r" return ast_node_new(ast_kind_literal(), 13) end
+    if esc == "t" return ast_node_new(ast_kind_literal(), 9) end
+    if esc == "0" return ast_node_new(ast_kind_literal(), 0) end
 
     let c = ord(esc)
     if p.flag_i == 1
@@ -208,7 +356,7 @@ end
 
 # Parses character classes [...] and [^...]
 function _p_parse_class(p)
-    _p_next(p)
+    _p_next(p) # consume "["
     let negated = 0
     if _p_peek(p) == "^"
         negated = 1
@@ -234,11 +382,16 @@ function _p_parse_class(p)
                 ranges.push([65, 90])
                 ranges.push([95, 95])
                 ranges.push([97, 122])
+                ranges.push([192, 255])
                 continue
             elif esc == "s"
                 ranges.push([9, 13])
                 ranges.push([32, 32])
                 continue
+            elif esc == "x" and _p_has_more(p)
+                let h1 = _p_next(p)
+                let h2 = _p_next(p)
+                code1 = hex_char_val(h1) * 16 + hex_char_val(h2)
             elif esc == "n"
                 code1 = 10
             elif esc == "r"
@@ -264,7 +417,11 @@ function _p_parse_class(p)
             let code2 = 0
             if ch2 == "\\"
                 let esc2 = _p_next(p)
-                if esc2 == "n"
+                if esc2 == "x" and _p_has_more(p)
+                    let h1 = _p_next(p)
+                    let h2 = _p_next(p)
+                    code2 = hex_char_val(h1) * 16 + hex_char_val(h2)
+                elif esc2 == "n"
                     code2 = 10
                 elif esc2 == "r"
                     code2 = 13
@@ -413,5 +570,5 @@ end
 function parse_regex_ast(pattern, flags = "")
     let p = parser_state_new(pattern, flags)
     let ast = _p_parse_alternation(p)
-    return [ast, p.group_count, p.flag_i, p.flag_m, p.flag_s]
+    return [ast, p.group_count, p.flag_i, p.flag_m, p.flag_s, p.named_groups, p.group_names]
 end
