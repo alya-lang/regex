@@ -1,7 +1,7 @@
 [package]
 name = "regex"
-version = "0.1.0"
-alya-version = "0.0.17"
+version = "0.2.0"
+alya-version = "0.0.18"
 entry = "src/lib.alya"
 description = "High-performance regular expression engine with linear-time matching, named capture groups, lookarounds, and global multilingual Unicode support"
 authors = ["Alya Language Contributors <https://github.com/alya-lang>"]
