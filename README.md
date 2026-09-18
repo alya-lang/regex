@@ -11,7 +11,7 @@ High-performance, pure Alya regular expression engine with linear-time matching,
 
 ## 🌟 Features
 
-- ⚡ **Pure Alya & Fast**: Zero external C dependencies; compiles directly with `alyac` to native machine code (>190,000 matches/sec).
+- ⚡ **Pure Alya & Fast**: Zero external C dependencies; compiles directly with `alya` to native machine code (>190,000 matches/sec).
 - 🌍 **Global Multilingual & Unicode**:
   - **Universal Case-Folding (`"i"` flag)**: Full bidirectional case-folding for German (`ä, ö, ü, ß`), French (`é, è, ê, à, ç`), Spanish (`ñ, á, é, í, ó`), Cyrillic / Russian (`А-Я` ↔ `а-я`), Greek (`Α-Ω` ↔ `α-ω`), Polish/Czech (`ł, ś, ź, ż, ć, č`), Scandinavian (`å, æ, ø`), and Turkish (`ç, ğ, ı, i, ö, ş, ü` ↔ `Ç, Ğ, I, İ, Ö, Ş, Ü`).
   - **Non-Cased Scripts**: Native UTF-8 matching for Chinese, Japanese, Korean, Arabic, Hebrew, Devanagari, etc.
@@ -77,8 +77,8 @@ regex = { git = "https://github.com/alya-lang/regex", branch = "main" }
 Or install it directly using the Alya package CLI:
 
 ```bash
-alyac add regex --git https://github.com/alya-lang/regex --branch main
-alyac install
+alya add regex --git https://github.com/alya-lang/regex --branch main
+alya install
 ```
 
 ---
@@ -174,32 +174,32 @@ main()
 
 ## 🧪 Running Tests & Benchmarks
 
-Run all test suites automatically using `alyac`:
+Run all test suites automatically using `alya`:
 
 ```bash
-alyac test
+alya test
 ```
 
 Run individual test suites:
 
 ```bash
 # Basic tests (53 assertions)
-alyac run tests/test_basic.alya
+alya run tests/test_basic.alya
 
 # Advanced features (38 assertions)
-alyac run tests/test_advanced.alya
+alya run tests/test_advanced.alya
 ```
 
 Run performance micro-benchmarks:
 
 ```bash
-alyac run benches/bench_basic.alya
+alya run benches/bench_basic.alya
 ```
 
 Run the interactive showcase:
 
 ```bash
-alyac run examples/demo.alya
+alya run examples/demo.alya
 ```
 
 ---
@@ -214,11 +214,11 @@ Contributions are welcome! Please follow these guidelines:
    ```
 2. Ensure code is formatted with the canonical formatter:
    ```bash
-   alyac fmt .
+   alya fmt .
    ```
 3. Run the automated test suite before opening a pull request:
    ```bash
-   alyac test
+   alya test
    ```
 
 ---
