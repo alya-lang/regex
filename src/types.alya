@@ -68,13 +68,13 @@ pub function ast_kind_lookaround() return 13 end
 
 # Struct representing a single virtual machine instruction (internal)
 struct Instruction
-    op
-    arg1
-    arg2
-    inst_sub
+    op,
+    arg1,
+    arg2,
+    inst_sub: Any[]
 end
 
-pub function inst_new(op, arg1 = 0, arg2 = 0, inst_sub = null)
+pub function inst_new(op, arg1 = 0, arg2 = 0, inst_sub: Any[] = null)
     return Instruction {
         op: op,
         arg1: arg1,
@@ -85,15 +85,15 @@ end
 
 # Struct representing an AST node (internal)
 struct AstNode
-    kind
-    val1
-    val2
-    node_data
-    children
+    kind,
+    val1,
+    val2,
+    node_data: Any[],
+    children: Any[],
     group_name
 end
 
-pub function ast_node_new(kind, val1 = 0, val2 = 0, node_data = null, children = null, group_name = "")
+pub function ast_node_new(kind, val1 = 0, val2 = 0, node_data: Any[] = null, children: Any[] = null, group_name = "")
     return AstNode {
         kind: kind,
         val1: val1,
@@ -106,20 +106,20 @@ end
 
 # Struct representing a compiled regular expression (public)
 pub struct Regex
-    pattern
-    flags
-    code
-    num_groups
-    is_anchored
-    prefix
-    flag_i
-    flag_m
-    flag_s
-    named_groups
+    pattern,
+    flags,
+    code: Any[],
+    num_groups,
+    is_anchored,
+    prefix,
+    flag_i,
+    flag_m,
+    flag_s,
+    named_groups,
     group_names
 end
 
-pub function regex_new(pattern, flags, code, num_groups, is_anchored, prefix, flag_i, flag_m, flag_s, named_groups = {}, group_names = {})
+pub function regex_new(pattern, flags, code: Any[], num_groups, is_anchored, prefix, flag_i, flag_m, flag_s, named_groups = {}, group_names = {})
     return Regex {
         pattern: pattern,
         flags: flags,
