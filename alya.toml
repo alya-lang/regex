@@ -11,3 +11,7 @@ repository = "https://github.com/alya-lang/regex"
 keywords = ["alya", "alya-lang", "package", "regex", "regexp", "pattern", "matcher"]
 
 [dependencies]
+
+# [lint]
+# disabled_rules = []
+# exclude = []
