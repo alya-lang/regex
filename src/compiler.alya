@@ -169,7 +169,10 @@ pub function _c_compile_node(c, node)
     if kind == ast_kind_quantifier()
         let min_q = node.val1
         let max_q = node.val2
-        let is_lazy = node.node_data
+        let is_lazy = 0
+        if len(node.node_data) > 0
+            is_lazy = node.node_data[0]
+        end
         let inner = node.children[0]
 
         # Emit mandatory minimum repetitions

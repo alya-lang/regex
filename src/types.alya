@@ -1,80 +1,85 @@
-# Types and data structures for regex engine
-# Part of the Alya Language package ecosystem (https://github.com/alya-lang)
+## Types and data structures for regex engine
+## Part of the Alya Language package ecosystem (https://github.com/alya-lang)
 
-# Opcode constants (internal, used only by compiler/vm)
-let OP_CHAR = 1              # Matches specific char code: arg1 = char_code
-let OP_CHAR_CI = 2           # Case-insensitive char: arg1 = lowercase char_code
-let OP_ANY = 3               # Matches any character except \n (or any if dotall)
-let OP_CLASS = 4             # Character class: extra = ranges, arg1 = negated (0 or 1)
-let OP_MATCH = 5             # Match success
-let OP_JUMP = 6              # Unconditional jump: arg1 = target_pc
-let OP_SPLIT = 7             # Branching: arg1 = target1, arg2 = target2
-let OP_SAVE = 8              # Save capture position: arg1 = slot index
-let OP_ASSERT_START = 9      # ^ (start of text or line)
-let OP_ASSERT_END = 10       # $ (end of text or line)
-let OP_ASSERT_WORD = 11      # \b (word boundary)
-let OP_ASSERT_NOT_WORD = 12  # \B (non-word boundary)
-let OP_BACKREF = 13          # \1..\9 backreference to captured group: arg1 = gid
-let OP_LOOKAHEAD = 14        # (?=...) or (?!...): arg1 = is_positive, extra = sub_code
-let OP_LOOKBEHIND = 15       # (?<=...) or (?<!...): arg1 = is_positive, extra = sub_code
+## Virtual machine instruction opcodes
+pub enum Opcode
+    Char = 1
+    CharCi = 2
+    Any = 3
+    Class = 4
+    Match = 5
+    Jump = 6
+    Split = 7
+    Save = 8
+    AssertStart = 9
+    AssertEnd = 10
+    AssertWord = 11
+    AssertNotWord = 12
+    Backref = 13
+    Lookahead = 14
+    Lookbehind = 15
+end
 
-# Opcode getters for function scopes
-pub function op_char() return 1 end
-pub function op_char_ci() return 2 end
-pub function op_any() return 3 end
-pub function op_class() return 4 end
-pub function op_match() return 5 end
-pub function op_jump() return 6 end
-pub function op_split() return 7 end
-pub function op_save() return 8 end
-pub function op_assert_start() return 9 end
-pub function op_assert_end() return 10 end
-pub function op_assert_word() return 11 end
-pub function op_assert_not_word() return 12 end
-pub function op_backref() return 13 end
-pub function op_lookahead() return 14 end
-pub function op_lookbehind() return 15 end
+## Opcode getters for backward compatibility
+pub function op_char() return Opcode.Char end
+pub function op_char_ci() return Opcode.CharCi end
+pub function op_any() return Opcode.Any end
+pub function op_class() return Opcode.Class end
+pub function op_match() return Opcode.Match end
+pub function op_jump() return Opcode.Jump end
+pub function op_split() return Opcode.Split end
+pub function op_save() return Opcode.Save end
+pub function op_assert_start() return Opcode.AssertStart end
+pub function op_assert_end() return Opcode.AssertEnd end
+pub function op_assert_word() return Opcode.AssertWord end
+pub function op_assert_not_word() return Opcode.AssertNotWord end
+pub function op_backref() return Opcode.Backref end
+pub function op_lookahead() return Opcode.Lookahead end
+pub function op_lookbehind() return Opcode.Lookbehind end
 
-# AST Node Kind constants (internal)
-let AST_EMPTY = 0
-let AST_LITERAL = 1
-let AST_ANY = 2
-let AST_CLASS = 3
-let AST_ANCHOR_START = 4
-let AST_ANCHOR_END = 5
-let AST_WORD_BOUNDARY = 6
-let AST_NOT_WORD_BOUNDARY = 7
-let AST_CONCAT = 8
-let AST_ALT = 9
-let AST_GROUP = 10
-let AST_QUANTIFIER = 11
-let AST_BACKREF = 12
-let AST_LOOKAROUND = 13
+## AST Node kind discriminator enum
+pub enum AstKind
+    Empty = 0
+    Literal = 1
+    Any = 2
+    Class = 3
+    AnchorStart = 4
+    AnchorEnd = 5
+    WordBoundary = 6
+    NotWordBoundary = 7
+    Concat = 8
+    Alt = 9
+    Group = 10
+    Quantifier = 11
+    Backref = 12
+    Lookaround = 13
+end
 
-pub function ast_kind_empty() return 0 end
-pub function ast_kind_literal() return 1 end
-pub function ast_kind_any() return 2 end
-pub function ast_kind_class() return 3 end
-pub function ast_kind_anchor_start() return 4 end
-pub function ast_kind_anchor_end() return 5 end
-pub function ast_kind_word_boundary() return 6 end
-pub function ast_kind_not_word_boundary() return 7 end
-pub function ast_kind_concat() return 8 end
-pub function ast_kind_alt() return 9 end
-pub function ast_kind_group() return 10 end
-pub function ast_kind_quantifier() return 11 end
-pub function ast_kind_backref() return 12 end
-pub function ast_kind_lookaround() return 13 end
+## AST node kind getters for backward compatibility
+pub function ast_kind_empty() return AstKind.Empty end
+pub function ast_kind_literal() return AstKind.Literal end
+pub function ast_kind_any() return AstKind.Any end
+pub function ast_kind_class() return AstKind.Class end
+pub function ast_kind_anchor_start() return AstKind.AnchorStart end
+pub function ast_kind_anchor_end() return AstKind.AnchorEnd end
+pub function ast_kind_word_boundary() return AstKind.WordBoundary end
+pub function ast_kind_not_word_boundary() return AstKind.NotWordBoundary end
+pub function ast_kind_concat() return AstKind.Concat end
+pub function ast_kind_alt() return AstKind.Alt end
+pub function ast_kind_group() return AstKind.Group end
+pub function ast_kind_quantifier() return AstKind.Quantifier end
+pub function ast_kind_backref() return AstKind.Backref end
+pub function ast_kind_lookaround() return AstKind.Lookaround end
 
 # Struct representing a single virtual machine instruction (internal)
 struct Instruction
     op,
     arg1,
     arg2,
-    inst_sub: Any[]
+    inst_sub: any[]
 end
 
-pub function inst_new(op, arg1 = 0, arg2 = 0, inst_sub: Any[] = null)
+pub function inst_new(op, arg1 = 0, arg2 = 0, inst_sub: any[] = [])
     return Instruction {
         op: op,
         arg1: arg1,
@@ -88,12 +93,12 @@ struct AstNode
     kind,
     val1,
     val2,
-    node_data: Any[],
-    children: Any[],
+    node_data: any[],
+    children: any[],
     group_name
 end
 
-pub function ast_node_new(kind, val1 = 0, val2 = 0, node_data: Any[] = null, children: Any[] = null, group_name = "")
+pub function ast_node_new(kind, val1 = 0, val2 = 0, node_data: any[] = [], children: any[] = [], group_name = "")
     return AstNode {
         kind: kind,
         val1: val1,
@@ -104,11 +109,11 @@ pub function ast_node_new(kind, val1 = 0, val2 = 0, node_data: Any[] = null, chi
     }
 end
 
-# Struct representing a compiled regular expression (public)
+## Compiled regular expression instance
 pub struct Regex
     pattern,
     flags,
-    code: Any[],
+    code: any[],
     num_groups,
     is_anchored,
     prefix,
@@ -119,7 +124,8 @@ pub struct Regex
     group_names
 end
 
-pub function regex_new(pattern, flags, code: Any[], num_groups, is_anchored, prefix, flag_i, flag_m, flag_s, named_groups = {}, group_names = {})
+## Creates a new Regex instance
+pub function regex_new(pattern, flags, code: any[], num_groups, is_anchored, prefix, flag_i, flag_m, flag_s, named_groups = {}, group_names = {})
     return Regex {
         pattern: pattern,
         flags: flags,
@@ -135,7 +141,7 @@ pub function regex_new(pattern, flags, code: Any[], num_groups, is_anchored, pre
     }
 end
 
-# Struct representing a regex match result (public)
+## Represents a successful regex match with matched text and capture groups
 pub struct Match
     m_text
     m_start
@@ -145,6 +151,7 @@ pub struct Match
     m_named_groups
 end
 
+## Creates a new Match instance
 pub function match_new(text, start_pos, end_pos, groups = [], spans = [], named_groups = {})
     return Match {
         m_text: text,
@@ -156,27 +163,31 @@ pub function match_new(text, start_pos, end_pos, groups = [], spans = [], named_
     }
 end
 
-# Match inspection helper functions
+## Returns full matched text
 pub function match_text(m)
     if m is null return "" end
     return m.m_text
 end
 
+## Returns starting 0-indexed byte offset of match
 pub function match_start(m)
     if m is null return -1 end
     return m.m_start
 end
 
+## Returns ending 0-indexed byte offset (exclusive) of match
 pub function match_end(m)
     if m is null return -1 end
     return m.m_end
 end
 
+## Returns byte length of matched substring
 pub function match_len(m)
     if m is null return 0 end
     return m.m_end - m.m_start
 end
 
+## Returns captured group text by 1-indexed group number (or 0 for entire match)
 pub function match_group(m, idx = 0)
     if m is null return "" end
     let groups = m.m_groups
@@ -187,6 +198,7 @@ pub function match_group(m, idx = 0)
     return ""
 end
 
+## Returns captured group text by group name
 pub function match_named(m, name)
     if m is null return "" end
     let named = m.m_named_groups
@@ -199,11 +211,13 @@ pub function match_named(m, name)
     return ""
 end
 
+## Returns array of all captured group strings
 pub function match_groups(m)
     if m is null return [] end
     return m.m_groups
 end
 
+## Returns [start, end] span array for group idx
 pub function match_span(m, idx = 0)
     if m is null return [-1, -1] end
     let spans = m.m_spans
@@ -215,34 +229,42 @@ end
 
 # --- Struct Methods (Alya v0.0.18) ---
 
+## Returns matched text
 pub function Match.text(self)
     return match_text(self)
 end
 
+## Returns match start position
 pub function Match.start(self)
     return match_start(self)
 end
 
+## Returns match end position
 pub function Match.end_pos(self)
     return match_end(self)
 end
 
+## Returns match length
 pub function Match.len(self)
     return match_len(self)
 end
 
+## Returns captured group by index
 pub function Match.group(self, idx = 0)
     return match_group(self, idx)
 end
 
+## Returns captured group by name
 pub function Match.named(self, name)
     return match_named(self, name)
 end
 
+## Returns all captured group strings
 pub function Match.groups(self)
     return match_groups(self)
 end
 
+## Returns [start, end] span for group index
 pub function Match.span(self, idx = 0)
     return match_span(self, idx)
 end

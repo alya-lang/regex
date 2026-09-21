@@ -76,7 +76,7 @@ pub function _p_parse_alternation(p)
     if len(branches) == 1
         return branches[0]
     end
-    return ast_node_new(ast_kind_alt(), 0, 0, null, branches)
+    return ast_node_new(ast_kind_alt(), 0, 0, [], branches)
 end
 
 # Parses a sequence of concatenated elements
@@ -96,7 +96,7 @@ pub function _p_parse_branch(p)
     if len(pieces) == 1
         return pieces[0]
     end
-    return ast_node_new(ast_kind_concat(), 0, 0, null, pieces)
+    return ast_node_new(ast_kind_concat(), 0, 0, [], pieces)
 end
 
 # Parses a single atomic pattern element
@@ -134,7 +134,7 @@ pub function _p_parse_atom(p)
                 _p_next(p) # consume ":"
                 let inner = _p_parse_alternation(p)
                 if _p_peek(p) == ")" _p_next(p) end
-                return ast_node_new(ast_kind_group(), 0, 0, null, [inner])
+                return ast_node_new(ast_kind_group(), 0, 0, [], [inner])
             end
 
             # Positive Lookahead: (?=...)
@@ -142,7 +142,7 @@ pub function _p_parse_atom(p)
                 _p_next(p) # consume "="
                 let inner = _p_parse_alternation(p)
                 if _p_peek(p) == ")" _p_next(p) end
-                return ast_node_new(ast_kind_lookaround(), 0, 1, null, [inner])
+                return ast_node_new(ast_kind_lookaround(), 0, 1, [], [inner])
             end
 
             # Negative Lookahead: (?!...)
@@ -150,7 +150,7 @@ pub function _p_parse_atom(p)
                 _p_next(p) # consume "!"
                 let inner = _p_parse_alternation(p)
                 if _p_peek(p) == ")" _p_next(p) end
-                return ast_node_new(ast_kind_lookaround(), 0, 0, null, [inner])
+                return ast_node_new(ast_kind_lookaround(), 0, 0, [], [inner])
             end
 
             # Lookbehinds: (?<=...) and (?<!...) OR Named group: (?<name>...)
@@ -161,12 +161,12 @@ pub function _p_parse_atom(p)
                     _p_next(p) # consume "="
                     let inner = _p_parse_alternation(p)
                     if _p_peek(p) == ")" _p_next(p) end
-                    return ast_node_new(ast_kind_lookaround(), 1, 1, null, [inner])
+                    return ast_node_new(ast_kind_lookaround(), 1, 1, [], [inner])
                 elif look_type == "!"
                     _p_next(p) # consume "!"
                     let inner = _p_parse_alternation(p)
                     if _p_peek(p) == ")" _p_next(p) end
-                    return ast_node_new(ast_kind_lookaround(), 1, 0, null, [inner])
+                    return ast_node_new(ast_kind_lookaround(), 1, 0, [], [inner])
                 else
                     # Named capture group: (?<name>...)
                     let name = ""
@@ -180,7 +180,7 @@ pub function _p_parse_atom(p)
                     p.group_names[str(gid)] = name
                     let inner = _p_parse_alternation(p)
                     if _p_peek(p) == ")" _p_next(p) end
-                    return ast_node_new(ast_kind_group(), gid, 1, null, [inner], name)
+                    return ast_node_new(ast_kind_group(), gid, 1, [], [inner], name)
                 end
             end
 
@@ -199,7 +199,7 @@ pub function _p_parse_atom(p)
                 p.group_names[str(gid)] = name
                 let inner = _p_parse_alternation(p)
                 if _p_peek(p) == ")" _p_next(p) end
-                return ast_node_new(ast_kind_group(), gid, 1, null, [inner], name)
+                return ast_node_new(ast_kind_group(), gid, 1, [], [inner], name)
             end
         end
 
@@ -210,7 +210,7 @@ pub function _p_parse_atom(p)
         if _p_peek(p) == ")"
             _p_next(p)
         end
-        return ast_node_new(ast_kind_group(), gid, 1, null, [inner])
+        return ast_node_new(ast_kind_group(), gid, 1, [], [inner])
     end
 
     if ch == "["
@@ -236,7 +236,7 @@ pub function _p_parse_atom(p)
             if pair[1] == -1
                 return ast_node_new(ast_kind_literal(), pair[0])
             else
-                return ast_node_new(ast_kind_concat(), 0, 0, null, [
+                return ast_node_new(ast_kind_concat(), 0, 0, [], [
                     ast_node_new(ast_kind_literal(), pair[0]),
                     ast_node_new(ast_kind_literal(), pair[1])
                 ])
@@ -326,7 +326,7 @@ pub function _p_parse_escape(p, esc)
                 nodes.push(ast_node_new(ast_kind_literal(), bytes[bi]))
                 bi += 1
             end
-            return ast_node_new(ast_kind_concat(), 0, 0, null, nodes)
+            return ast_node_new(ast_kind_concat(), 0, 0, [], nodes)
         end
     end
 
@@ -381,34 +381,39 @@ pub function _p_parse_class(p)
         let code1 = 0
         if ch1 == "\\"
             let esc = _p_next(p)
-            if esc == "d"
-                ranges.push([48, 57])
-                continue
-            elif esc == "w"
-                ranges.push([48, 57])
-                ranges.push([65, 90])
-                ranges.push([95, 95])
-                ranges.push([97, 122])
-                ranges.push([192, 255])
-                continue
-            elif esc == "s"
-                ranges.push([9, 13])
-                ranges.push([32, 32])
-                continue
-            elif esc == "x" and _p_has_more(p)
-                let h1 = _p_next(p)
-                let h2 = _p_next(p)
-                code1 = hex_char_val(h1) * 16 + hex_char_val(h2)
-            elif esc == "n"
-                code1 = 10
-            elif esc == "r"
-                code1 = 13
-            elif esc == "t"
-                code1 = 9
-            elif esc == "0"
-                code1 = 0
-            else
-                code1 = ord(esc)
+            when esc
+                is "d"
+                    ranges.push([48, 57])
+                    continue
+                is "w"
+                    ranges.push([48, 57])
+                    ranges.push([65, 90])
+                    ranges.push([95, 95])
+                    ranges.push([97, 122])
+                    ranges.push([192, 255])
+                    continue
+                is "s"
+                    ranges.push([9, 13])
+                    ranges.push([32, 32])
+                    continue
+                is "x"
+                    if _p_has_more(p)
+                        let h1 = _p_next(p)
+                        let h2 = _p_next(p)
+                        code1 = hex_char_val(h1) * 16 + hex_char_val(h2)
+                    else
+                        code1 = ord(esc)
+                    end
+                is "n"
+                    code1 = 10
+                is "r"
+                    code1 = 13
+                is "t"
+                    code1 = 9
+                is "0"
+                    code1 = 0
+                else
+                    code1 = ord(esc)
             end
         else
             code1 = ord(ch1)
@@ -424,20 +429,25 @@ pub function _p_parse_class(p)
             let code2 = 0
             if ch2 == "\\"
                 let esc2 = _p_next(p)
-                if esc2 == "x" and _p_has_more(p)
-                    let h1 = _p_next(p)
-                    let h2 = _p_next(p)
-                    code2 = hex_char_val(h1) * 16 + hex_char_val(h2)
-                elif esc2 == "n"
-                    code2 = 10
-                elif esc2 == "r"
-                    code2 = 13
-                elif esc2 == "t"
-                    code2 = 9
-                elif esc2 == "0"
-                    code2 = 0
-                else
-                    code2 = ord(esc2)
+                when esc2
+                    is "x"
+                        if _p_has_more(p)
+                            let h1 = _p_next(p)
+                            let h2 = _p_next(p)
+                            code2 = hex_char_val(h1) * 16 + hex_char_val(h2)
+                        else
+                            code2 = ord(esc2)
+                        end
+                    is "n"
+                        code2 = 10
+                    is "r"
+                        code2 = 13
+                    is "t"
+                        code2 = 9
+                    is "0"
+                        code2 = 0
+                    else
+                        code2 = ord(esc2)
                 end
             else
                 code2 = ord(ch2)
@@ -473,21 +483,22 @@ pub function _p_parse_quantifier(p, atom)
     let max_q = 0
     let has_q = 0
 
-    if ch == "*"
-        _p_next(p)
-        min_q = 0
-        max_q = -1
-        has_q = 1
-    elif ch == "+"
-        _p_next(p)
-        min_q = 1
-        max_q = -1
-        has_q = 1
-    elif ch == "?"
-        _p_next(p)
-        min_q = 0
-        max_q = 1
-        has_q = 1
+    when ch
+        is "*"
+            _p_next(p)
+            min_q = 0
+            max_q = -1
+            has_q = 1
+        is "+"
+            _p_next(p)
+            min_q = 1
+            max_q = -1
+            has_q = 1
+        is "?"
+            _p_next(p)
+            min_q = 0
+            max_q = 1
+            has_q = 1
     end
 
     let is_brace_q = 0
@@ -570,7 +581,7 @@ pub function _p_parse_quantifier(p, atom)
         is_lazy = 1
     end
 
-    return ast_node_new(ast_kind_quantifier(), min_q, max_q, is_lazy, [atom])
+    return ast_node_new(ast_kind_quantifier(), min_q, max_q, [is_lazy], [atom])
 end
 
 # Main entry point to parse pattern into AST root

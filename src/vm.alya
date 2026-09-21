@@ -355,33 +355,34 @@ pub function _expand_replacement(template_str, m)
         let ch = char_at(template_str, i)
         if ch == "$" and i + 1 < tlen
             let next_ch = char_at(template_str, i + 1)
-            if next_ch == "$"
-                res += "$"
-                i += 2
-                continue
-            elif next_ch == "&" or next_ch == "0"
-                res += match_text(m)
-                i += 2
-                continue
-            elif is_digit(next_ch) == 1
-                let g_idx = int(next_ch)
-                res += match_group(m, g_idx)
-                i += 2
-                continue
-            elif next_ch == "{" or next_ch == "<"
-                let close_ch = "}"
-                if next_ch == "<" close_ch = ">" end
-                let name = ""
-                let ni = i + 2
-                while ni < tlen and char_at(template_str, ni) != close_ch
-                    name += char_at(template_str, ni)
-                    ni += 1
-                end
-                if ni < tlen and char_at(template_str, ni) == close_ch
-                    res += match_named(m, name)
-                    i = ni + 1
+            when next_ch
+                is "$"
+                    res += "$"
+                    i += 2
                     continue
-                end
+                is "&", "0"
+                    res += match_text(m)
+                    i += 2
+                    continue
+                is "1", "2", "3", "4", "5", "6", "7", "8", "9"
+                    let g_idx = int(next_ch)
+                    res += match_group(m, g_idx)
+                    i += 2
+                    continue
+                is "{", "<"
+                    let close_ch = "}"
+                    if next_ch == "<" close_ch = ">" end
+                    let name = ""
+                    let ni = i + 2
+                    while ni < tlen and char_at(template_str, ni) != close_ch
+                        name += char_at(template_str, ni)
+                        ni += 1
+                    end
+                    if ni < tlen and char_at(template_str, ni) == close_ch
+                        res += match_named(m, name)
+                        i = ni + 1
+                        continue
+                    end
             end
         end
         res += ch
