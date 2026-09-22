@@ -1,8 +1,29 @@
-# Character inspection, case folding, and regex escaping utilities
-# Part of the Alya Language package ecosystem (https://github.com/alya-lang)
+## # regex/utils
+##
+## Character inspection, case folding, and regex escaping utilities.
+## Part of the Alya Language package ecosystem (https://github.com/alya-lang).
+##
+## Supports ASCII and multilingual Unicode workloads (Turkish, Latin Extended,
+## Cyrillic, Greek) with byte-level UTF-8 case folding helpers.
 
-# Checks if a single character is an ASCII letter [a-zA-Z]
-pub function is_ascii_letter(ch)
+# ───────────────────────────────────────────────────────────────
+# Character Classification
+# ───────────────────────────────────────────────────────────────
+
+## Checks whether a single character is an ASCII letter `[a-zA-Z]`.
+##
+## ### Parameters
+## - `ch`: Single-character string to inspect.
+##
+## ### Returns
+## `1` when the character is an ASCII letter, `0` otherwise.
+##
+## ### Examples
+## ```alya
+## say is_ascii_letter("G") # 1
+## say is_ascii_letter("5") # 0
+## ```
+pub function is_ascii_letter(ch: string) -> int
     if len(ch) == 0 return 0 end
     let c = ord(ch)
     if (c >= 65 and c <= 90) or (c >= 97 and c <= 122)
@@ -11,8 +32,19 @@ pub function is_ascii_letter(ch)
     return 0
 end
 
-# Checks if a single character is an ASCII digit [0-9]
-pub function is_digit(ch)
+## Checks whether a single character is an ASCII digit `[0-9]`.
+##
+## ### Parameters
+## - `ch`: Single-character string to inspect.
+##
+## ### Returns
+## `1` when the character is a digit, `0` otherwise.
+##
+## ### Examples
+## ```alya
+## say is_digit("7") # 1
+## ```
+pub function is_digit(ch: string) -> int
     if len(ch) == 0 return 0 end
     let c = ord(ch)
     if c >= 48 and c <= 57
@@ -21,8 +53,14 @@ pub function is_digit(ch)
     return 0
 end
 
-# Checks if a single character is a hexadecimal digit [0-9a-fA-F]
-pub function is_hex_digit(ch)
+## Checks whether a single character is a hexadecimal digit `[0-9a-fA-F]`.
+##
+## ### Parameters
+## - `ch`: Single-character string to inspect.
+##
+## ### Returns
+## `1` when the character is a hex digit, `0` otherwise.
+pub function is_hex_digit(ch: string) -> int
     if len(ch) == 0 return 0 end
     let c = ord(ch)
     if (c >= 48 and c <= 57) or (c >= 65 and c <= 70) or (c >= 97 and c <= 102)
@@ -31,8 +69,21 @@ pub function is_hex_digit(ch)
     return 0
 end
 
-## Returns numeric integer value of a hexadecimal character
-pub function hex_char_val(ch)
+## Returns the numeric integer value of a hexadecimal character.
+##
+## Non-hex input safely maps to `0`.
+##
+## ### Parameters
+## - `ch`: Single-character hex string.
+##
+## ### Returns
+## Integer value in the range `0..15`.
+##
+## ### Examples
+## ```alya
+## say hex_char_val("f") # 15
+## ```
+pub function hex_char_val(ch: string) -> int
     if len(ch) == 0 return 0 end
     let c = ord(ch)
     when c
@@ -43,8 +94,19 @@ pub function hex_char_val(ch)
     end
 end
 
-## Converts a Unicode code point to a list of UTF-8 byte integers
-pub function codepoint_to_utf8(cp)
+## Converts a Unicode code point to a list of UTF-8 byte integers.
+##
+## ### Parameters
+## - `cp`: Unicode code point integer.
+##
+## ### Returns
+## Array of 1-4 UTF-8 byte integers.
+##
+## ### Examples
+## ```alya
+## say codepoint_to_utf8(231) # [195, 167]
+## ```
+pub function codepoint_to_utf8(cp: int) -> array
     when cp
         is < 128
             return [cp]
@@ -64,8 +126,17 @@ pub function codepoint_to_utf8(cp)
     end
 end
 
-# Checks if a character is a word character [a-zA-Z0-9_]
-pub function is_word_char(ch)
+## Checks whether a character is a word character `[a-zA-Z0-9_]`.
+##
+## Bytes in the `192..255` range (multilingual lead bytes) count as word
+## characters so `\b` and `\w` behave across languages.
+##
+## ### Parameters
+## - `ch`: Single-character string to inspect.
+##
+## ### Returns
+## `1` when the character is a word character, `0` otherwise.
+pub function is_word_char(ch: string) -> int
     if len(ch) == 0 return 0 end
     let c = ord(ch)
     if (c >= 48 and c <= 57) or (c >= 65 and c <= 90) or (c >= 97 and c <= 122) or c == 95
@@ -78,8 +149,16 @@ pub function is_word_char(ch)
     return 0
 end
 
-# Checks if a character is a whitespace character [\s]
-pub function is_space_char(ch)
+## Checks whether a character is a whitespace character `[\s]`.
+##
+## Covers space, tab, newline, carriage return, form feed, and vertical tab.
+##
+## ### Parameters
+## - `ch`: Single-character string to inspect.
+##
+## ### Returns
+## `1` when the character is whitespace, `0` otherwise.
+pub function is_space_char(ch: string) -> int
     if len(ch) == 0 return 0 end
     let c = ord(ch)
     # space (32), tab (9), newline (10), carriage return (13), form feed (12), vertical tab (11)
@@ -89,16 +168,44 @@ pub function is_space_char(ch)
     return 0
 end
 
-# Converts single-byte ASCII character code to lowercase [A-Z] -> [a-z]
-pub function to_lower_code(code)
-    if code >= 65 and code <= 90
-        return code + 32
+# ───────────────────────────────────────────────────────────────
+# Case Folding
+# ───────────────────────────────────────────────────────────────
+
+## Converts a single-byte ASCII character code to lowercase (`[A-Z]` to `[a-z]`).
+##
+## Non-uppercase codes pass through unchanged.
+##
+## ### Parameters
+## - `code`: ASCII character code integer.
+##
+## ### Returns
+## Lowercased character code integer.
+pub function to_lower_code(code: int) -> int
+    return when code
+        is 65..90 => code + 32
+        else => code
     end
-    return code
 end
 
-# Takes a 2-byte UTF-8 sequence [b1, b2] and returns the lowercase [b1_low, b2_low]
-pub function to_lower_utf8_pair(b1, b2)
+## Maps a 2-byte UTF-8 sequence `[b1, b2]` to its lowercase `[b1_low, b2_low]`.
+##
+## Covers Latin-1 Supplement, Latin Extended-A (Turkish `Ğ`/`Ş`), Cyrillic,
+## and Greek ranges. A trailing `-1` signals a fold into single-byte ASCII
+## (e.g. Turkish uppercase `İ` becomes lowercase `i`).
+##
+## ### Parameters
+## - `b1`: Lead byte integer.
+## - `b2`: Continuation byte integer.
+##
+## ### Returns
+## Two-element array with the lowercased byte pair.
+##
+## ### Examples
+## ```alya
+## say to_lower_utf8_pair(196, 158) # [196, 159]
+## ```
+pub function to_lower_utf8_pair(b1: int, b2: int) -> array
     # Latin-1 Supplement (0xC3 = 195) - French, German, Spanish, Scandinavian, Portuguese...
     # Ä/ä (132->164), É/é (137->169), Ñ/ñ (145->177), Ö/ö (150->182), Ü/ü (156->188), Ç/ç (135->167)...
     if b1 == 195
@@ -159,8 +266,14 @@ pub function to_lower_utf8_pair(b1, b2)
     return [b1, b2]
 end
 
-# Converts a single character to lowercase
-pub function to_lower_char(ch)
+## Converts a single character to lowercase.
+##
+## ### Parameters
+## - `ch`: Single-character string.
+##
+## ### Returns
+## Lowercased character string (empty input yields `""`).
+pub function to_lower_char(ch: string) -> string
     if len(ch) == 0 return "" end
     let c = ord(ch)
     let lc = to_lower_code(c)
@@ -170,8 +283,19 @@ pub function to_lower_char(ch)
     return ch
 end
 
-## Converts an entire string to lowercase (supporting ASCII, Latin Extended, Cyrillic, Greek, etc.)
-pub function to_lower_string(s)
+## Converts an entire string to lowercase (ASCII, Latin Extended, Cyrillic, Greek).
+##
+## ### Parameters
+## - `s`: Input string.
+##
+## ### Returns
+## Lowercased string preserving multibyte sequences.
+##
+## ### Examples
+## ```alya
+## say to_lower_string("ÖĞRENCİ") # "öğrenci"
+## ```
+pub function to_lower_string(s: string) -> string
     let slen = len(s)
     let res = ""
     let i = 0
@@ -202,8 +326,21 @@ pub function to_lower_string(s)
     return res
 end
 
-# Checks if a position in text matches word boundary \b or \B
-pub function check_word_boundary(text, pos, text_len, is_positive)
+# ───────────────────────────────────────────────────────────────
+# Assertions & Escaping
+# ───────────────────────────────────────────────────────────────
+
+## Checks whether a position in text matches a word boundary `\b` or `\B`.
+##
+## ### Parameters
+## - `text`: Input text string.
+## - `pos`: Byte position to test.
+## - `text_len`: Total text byte length.
+## - `is_positive`: `1` for `\b`, `0` for `\B`.
+##
+## ### Returns
+## `1` when the assertion holds at `pos`, `0` otherwise.
+pub function check_word_boundary(text: string, pos: int, text_len: int, is_positive: int) -> int
     let before_word = 0
     let after_word = 0
     if pos > 0
@@ -218,17 +355,26 @@ pub function check_word_boundary(text, pos, text_len, is_positive)
         is_bound = 1
     end
 
-    if is_positive == 1
-        return is_bound
+    return when
+        is_positive == 1 => is_bound
+        is_bound == 1    => 0
+        else             => 1
     end
-    if is_bound == 1
-        return 0
-    end
-    return 1
 end
 
-# Escapes all regular expression meta-characters in a literal string
-pub function escape_pattern(str_val)
+## Escapes all regular expression meta-characters in a literal string.
+##
+## ### Parameters
+## - `str_val`: Raw literal string.
+##
+## ### Returns
+## Escaped string safe to embed in a pattern.
+##
+## ### Examples
+## ```alya
+## say escape_pattern("file.name*") # "file\\.name\\*"
+## ```
+pub function escape_pattern(str_val: string) -> string
     let slen = len(str_val)
     let res = ""
     let i = 0

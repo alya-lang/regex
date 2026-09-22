@@ -1,4 +1,10 @@
-# Real-world demonstration of the Alya regex package
+## Demonstration of the regex package
+##
+## Showcases email validation, SemVer parsing, PII masking, Markdown link
+## extraction, token splitting, named groups, lookarounds, backreferences,
+## and multilingual case-folding.
+## Part of the Alya Language package ecosystem (https://github.com/alya-lang)
+
 import "../src/lib.alya" as re
 
 function main()
@@ -21,9 +27,9 @@ function main()
         let em = test_emails[i]
         let valid = re::test(email_pattern, em)
         if valid == 1
-            say "  [VALID]   " + em
+            say "  [VALID]   {em}"
         else
-            say "  [INVALID] " + em
+            say "  [INVALID] {em}"
         end
         i += 1
     end
@@ -35,13 +41,16 @@ function main()
     let version_str = "v2.14.0-alpha.3"
     let sem_m = re::find(semver_reg, version_str)
     if sem_m != null
-        say "  Input:       " + version_str
-        say "  Major:       " + re::match_group(sem_m, 1)
-        say "  Minor:       " + re::match_group(sem_m, 2)
-        say "  Patch:       " + re::match_group(sem_m, 3)
+        let major = re::match_group(sem_m, 1)
+        let minor = re::match_group(sem_m, 2)
+        let patch = re::match_group(sem_m, 3)
+        say "  Input:       {version_str}"
+        say "  Major:       {major}"
+        say "  Minor:       {minor}"
+        say "  Patch:       {patch}"
         let prerelease = re::match_group(sem_m, 4)
         if len(prerelease) > 0
-            say "  Pre-release: " + prerelease
+            say "  Pre-release: {prerelease}"
         end
     end
     say ""
@@ -51,8 +60,8 @@ function main()
     let raw_text = "Call Alice at 555-123-4567 or Bob at 555-987-6543 for details."
     let phone_pattern = "\\b\\d{{3}}-\\d{{3}}-(\\d{{4}})\\b"
     let masked = re::replace_all_pattern(phone_pattern, raw_text, "***-***-$1")
-    say "  Original: " + raw_text
-    say "  Masked:   " + masked
+    say "  Original: {raw_text}"
+    say "  Masked:   {masked}"
     say ""
 
     # 4. Extracting Markdown Links with find_all
@@ -60,11 +69,14 @@ function main()
     let markdown = "Read our [Docs](https://alya-lang.org/docs) or visit [GitHub](https://github.com/alya-lang/alya) for source code."
     let link_reg = re::compile("\\[([^\\]]+)\\]\\((https?://[^\\)]+)\\)")
     let links = re::find_all(link_reg, markdown)
-    say "  Found " + str(len(links)) + " links:"
+    let link_count = len(links)
+    say "  Found {link_count} links:"
     let k = 0
     while k < len(links)
         let link_m = links[k]
-        say "    • Label: '" + re::match_group(link_m, 1) + "' => URL: " + re::match_group(link_m, 2)
+        let link_label = re::match_group(link_m, 1)
+        let link_url = re::match_group(link_m, 2)
+        say "    • Label: '{link_label}' => URL: {link_url}"
         k += 1
     end
     say ""
@@ -73,11 +85,13 @@ function main()
     say "[5] Splitting by Complex Delimiters:"
     let csv_like = "item1;  item2,   item3 \t item4;item5"
     let items = re::split_pattern("[,;\\s]+", csv_like)
-    say "  Input: '" + csv_like + "'"
-    say "  Tokens (" + str(len(items)) + " items):"
+    let item_count = len(items)
+    say "  Input: '{csv_like}'"
+    say "  Tokens ({item_count} items):"
     let t = 0
     while t < len(items)
-        say "    [" + str(t) + "] => '" + items[t] + "'"
+        let tok = items[t]
+        say "    [{t}] => '{tok}'"
         t += 1
     end
     # 6. Named Capture Groups & Template Replacement
@@ -86,13 +100,16 @@ function main()
     let log_line = "192.168.1.42 [GET] /api/v1/users"
     let log_m = re::find(re::compile(log_pattern), log_line)
     if log_m != null
-        say "  Log entry: " + log_line
-        say "  IP:        " + re::get_named(log_m, "ip")
-        say "  Method:    " + re::get_named(log_m, "method")
-        say "  Path:      " + re::get_named(log_m, "path")
+        let log_ip = re::get_named(log_m, "ip")
+        let log_method = re::get_named(log_m, "method")
+        let log_path = re::get_named(log_m, "path")
+        say "  Log entry: {log_line}"
+        say "  IP:        {log_ip}"
+        say "  Method:    {log_method}"
+        say "  Path:      {log_path}"
     end
     let reformatted = re::replace(re::compile(log_pattern), log_line, "$<method> request from $<ip> to $<path>")
-    say "  Reformat:  " + reformatted
+    say "  Reformat:  {reformatted}"
     say ""
 
     # 7. Lookaround Assertions
@@ -103,7 +120,9 @@ function main()
     say "  CSS values with px (without consuming 'px'):"
     let pi = 0
     while pi < len(px_matches)
-        say "    • " + re::match_text(px_matches[pi]) + " (start=" + str(re::match_start(px_matches[pi])) + ")"
+        let px_text = re::match_text(px_matches[pi])
+        let px_start = re::match_start(px_matches[pi])
+        say "    • {px_text} (start={px_start})"
         pi += 1
     end
     say ""
@@ -116,7 +135,9 @@ function main()
     say "  Matched valid HTML tags:"
     let ti = 0
     while ti < len(tag_matches)
-        say "    • " + re::match_text(tag_matches[ti]) + " => Tag: <" + re::get_named(tag_matches[ti], "tag") + ">"
+        let tag_text = re::match_text(tag_matches[ti])
+        let tag_name = re::get_named(tag_matches[ti], "tag")
+        say "    • {tag_text} => Tag: <{tag_name}>"
         ti += 1
     end
     say ""
@@ -128,11 +149,13 @@ function main()
     let wi = 0
     while wi < len(words)
         let w = words[wi]
-        say "  \\p{{L}} test on '" + w + "': " + str(re::is_match(tr_reg, w))
+        let hit = re::is_match(tr_reg, w)
+        say "  \\p{{L}} test on '{w}': {hit}"
         wi += 1
     end
     let ci_reg = re::compile("öğrenci", "i")
-    say "  Case-insensitive Turkish 'öğrenci' matches 'ÖĞRENCİ': " + str(re::is_match(ci_reg, "ÖĞRENCİ"))
+    let ci_hit = re::is_match(ci_reg, "ÖĞRENCİ")
+    say "  Case-insensitive Turkish 'öğrenci' matches 'ÖĞRENCİ': {ci_hit}"
     say ""
 
     say "All examples finished successfully!"

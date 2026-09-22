@@ -1,4 +1,6 @@
-# Benchmark suite for alya-lang/regex
+## Benchmark suite for regex
+## Part of the Alya Language package ecosystem (https://github.com/alya-lang)
+
 import "std/bench"
 import "../src/lib.alya" as re
 

@@ -1,23 +1,58 @@
-# Regular expression parser: AST generator from regex syntax
-# Part of the Alya Language package ecosystem (https://github.com/alya-lang)
+## # regex/parser
+##
+## Regular expression parser producing an AST from regex syntax.
+## Part of the Alya Language package ecosystem (https://github.com/alya-lang).
+##
+## Handles alternation, quantifiers, groups, named captures, lookarounds,
+## character classes, escape sequences, and Unicode property classes.
 
 import "./types.alya"
 import "./utils.alya"
 
+# ───────────────────────────────────────────────────────────────
+# Parser State
+# ───────────────────────────────────────────────────────────────
+
+## Mutable cursor over the pattern source (internal).
+##
+## ### Fields
+## - `pattern`: Pattern source string.
+## - `pos`: Current byte offset cursor.
+## - `len`: Pattern byte length.
+## - `group_count`: Numbered capturing group counter.
+## - `flags`: Modifier flags string.
+## - `flag_i`: `1` when case-insensitive matching is enabled.
+## - `flag_m`: `1` when multiline anchors are enabled.
+## - `flag_s`: `1` when dot matches newlines.
+## - `named_groups`: Map of group names to group indexes.
+## - `group_names`: Map of group indexes to group names.
 struct ParserState
-    pattern
-    pos
-    len
-    group_count
-    flags
-    flag_i
-    flag_m
-    flag_s
-    named_groups
-    group_names
+    pattern: string
+    pos: int
+    len: int
+    group_count: int
+    flags: string
+    flag_i: int
+    flag_m: int
+    flag_s: int
+    named_groups: map
+    group_names: map
 end
 
-pub function parser_state_new(pattern, flags = "")
+## Creates a parser cursor for a pattern, pre-scanning modifier flags.
+##
+## ### Parameters
+## - `pattern`: Pattern source string.
+## - `flags`: Modifier flags string (`"i"`, `"m"`, `"s"`). Defaults to `""`.
+##
+## ### Returns
+## A newly initialized `ParserState` instance.
+##
+## ### Examples
+## ```alya
+## let p = parser_state_new("^hi", "i")
+## ```
+pub function parser_state_new(pattern: string, flags: string = "")
     let flag_i = 0
     let flag_m = 0
     let flag_s = 0
@@ -45,18 +80,39 @@ pub function parser_state_new(pattern, flags = "")
     }
 end
 
-pub function _p_has_more(p)
+## Returns `1` when unread pattern input remains.
+##
+## ### Parameters
+## - `p`: Target `ParserState` instance.
+##
+## ### Returns
+## `1` when the cursor has not reached the pattern end, `0` otherwise.
+pub function _p_has_more(p: ParserState) -> int
     return p.pos < p.len
 end
 
-pub function _p_peek(p)
+## Peeks at the current pattern character without consuming it.
+##
+## ### Parameters
+## - `p`: Target `ParserState` instance.
+##
+## ### Returns
+## The current character string, or `""` at the end of input.
+pub function _p_peek(p: ParserState) -> string
     if p.pos < p.len
         return char_at(p.pattern, p.pos)
     end
     return ""
 end
 
-pub function _p_next(p)
+## Consumes and returns the current pattern character.
+##
+## ### Parameters
+## - `p`: Target `ParserState` instance.
+##
+## ### Returns
+## The consumed character string, or `""` at the end of input.
+pub function _p_next(p: ParserState) -> string
     if p.pos < p.len
         let ch = char_at(p.pattern, p.pos)
         p.pos += 1
@@ -65,8 +121,18 @@ pub function _p_next(p)
     return ""
 end
 
-# Parses an alternation (expr | expr | ...)
-pub function _p_parse_alternation(p)
+# ───────────────────────────────────────────────────────────────
+# Alternation & Concatenation
+# ───────────────────────────────────────────────────────────────
+
+## Parses an alternation branch sequence (`expr | expr | ...`).
+##
+## ### Parameters
+## - `p`: Target `ParserState` instance.
+##
+## ### Returns
+## The root `AstNode` for the alternation (or the single branch when alone).
+pub function _p_parse_alternation(p: ParserState)
     let branches = []
     branches.push(_p_parse_branch(p))
     while _p_peek(p) == "|"
@@ -79,8 +145,14 @@ pub function _p_parse_alternation(p)
     return ast_node_new(ast_kind_alt(), 0, 0, [], branches)
 end
 
-# Parses a sequence of concatenated elements
-pub function _p_parse_branch(p)
+## Parses a sequence of concatenated pattern elements.
+##
+## ### Parameters
+## - `p`: Target `ParserState` instance.
+##
+## ### Returns
+## The `AstNode` for the concatenated sequence.
+pub function _p_parse_branch(p: ParserState)
     let pieces = []
     while _p_has_more(p) and _p_peek(p) != "|" and _p_peek(p) != ")"
         let atom = _p_parse_atom(p)
@@ -99,8 +171,22 @@ pub function _p_parse_branch(p)
     return ast_node_new(ast_kind_concat(), 0, 0, [], pieces)
 end
 
-# Parses a single atomic pattern element
-pub function _p_parse_atom(p)
+# ───────────────────────────────────────────────────────────────
+# Atoms: Anchors, Groups, Classes, Escapes, Literals
+# ───────────────────────────────────────────────────────────────
+
+## Parses a single atomic pattern element.
+##
+## Covers anchors (`^`, `$`), wildcards (`.`), groups (capturing, named,
+## non-capturing, lookarounds), character classes, escape sequences, and
+## literal characters.
+##
+## ### Parameters
+## - `p`: Target `ParserState` instance.
+##
+## ### Returns
+## The atomic `AstNode`, or null at the end of input.
+pub function _p_parse_atom(p: ParserState)
     if not _p_has_more(p)
         return null
     end
@@ -247,8 +333,19 @@ pub function _p_parse_atom(p)
     return ast_node_new(ast_kind_literal(), code)
 end
 
-# Parses escape sequence \d, \w, \s, \b, \1..\9, \xHH, \uHHHH, \p{L}, etc.
-pub function _p_parse_escape(p, esc)
+# ───────────────────────────────────────────────────────────────
+# Escape Sequences
+# ───────────────────────────────────────────────────────────────
+
+## Parses an escape sequence (`\d`, `\w`, `\b`, `\1`, `\xHH`, `\uHHHH`, `\p{L}`).
+##
+## ### Parameters
+## - `p`: Target `ParserState` instance.
+## - `esc`: Escaped character string (the character after the backslash).
+##
+## ### Returns
+## The `AstNode` for the escape sequence.
+pub function _p_parse_escape(p: ParserState, esc: string)
     # Shorthand character classes
     if esc == "d"
         return ast_node_new(ast_kind_class(), 0, 0, [[48, 57]])
@@ -361,8 +458,18 @@ pub function _p_parse_escape(p, esc)
     return ast_node_new(ast_kind_literal(), c)
 end
 
-# Parses character classes [...] and [^...]
-pub function _p_parse_class(p)
+# ───────────────────────────────────────────────────────────────
+# Character Classes
+# ───────────────────────────────────────────────────────────────
+
+## Parses a character class (`[...]`, `[^...]`) with ranges and escapes.
+##
+## ### Parameters
+## - `p`: Target `ParserState` instance.
+##
+## ### Returns
+## The class `AstNode` holding sorted `[lo, hi]` range pairs.
+pub function _p_parse_class(p: ParserState)
     _p_next(p) # consume "["
     let negated = 0
     if _p_peek(p) == "^"
@@ -473,8 +580,21 @@ pub function _p_parse_class(p)
     return ast_node_new(ast_kind_class(), negated, 0, ranges)
 end
 
-# Parses quantifiers (*, +, ?, {m,n})
-pub function _p_parse_quantifier(p, atom)
+# ───────────────────────────────────────────────────────────────
+# Quantifiers
+# ───────────────────────────────────────────────────────────────
+
+## Parses quantifiers (`*`, `+`, `?`, `{m,n}`) applied to an atom.
+##
+## Supports lazy (`*?`) markers and escaped braces (`\{2\}`).
+##
+## ### Parameters
+## - `p`: Target `ParserState` instance.
+## - `atom`: The quantified `AstNode`.
+##
+## ### Returns
+## The quantifier `AstNode`, or the original atom when no quantifier follows.
+pub function _p_parse_quantifier(p: ParserState, atom)
     if not _p_has_more(p)
         return atom
     end
@@ -584,8 +704,24 @@ pub function _p_parse_quantifier(p, atom)
     return ast_node_new(ast_kind_quantifier(), min_q, max_q, [is_lazy], [atom])
 end
 
-# Main entry point to parse pattern into AST root
-pub function parse_regex_ast(pattern, flags = "")
+# ───────────────────────────────────────────────────────────────
+# Entry Point
+# ───────────────────────────────────────────────────────────────
+
+## Parses a full pattern into an AST root with group and flag metadata.
+##
+## ### Parameters
+## - `pattern`: Pattern source string.
+## - `flags`: Modifier flags string. Defaults to `""`.
+##
+## ### Returns
+## Array tuple `[ast, group_count, flag_i, flag_m, flag_s, named_groups, group_names]`.
+##
+## ### Examples
+## ```alya
+## let parsed = parse_regex_ast("(a+)", "")
+## ```
+pub function parse_regex_ast(pattern: string, flags: string = "") -> array
     let p = parser_state_new(pattern, flags)
     let ast = _p_parse_alternation(p)
     return [ast, p.group_count, p.flag_i, p.flag_m, p.flag_s, p.named_groups, p.group_names]

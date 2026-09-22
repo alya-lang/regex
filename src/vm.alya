@@ -1,11 +1,38 @@
-# Virtual machine and execution engine for regex matching
-# Part of the Alya Language package ecosystem (https://github.com/alya-lang)
+## # regex/vm
+##
+## Virtual machine and execution engine for regex matching.
+## Part of the Alya Language package ecosystem (https://github.com/alya-lang).
+##
+## Implements a backtracking Pike-style VM with catastrophic-backtracking
+## protection, plus search, replace, and split operations over compiled patterns.
 
 import "./types.alya"
 import "./utils.alya"
 
-# Evaluates instruction step with backtracking
-pub function _vm_step(code, pc, text, pos, text_len, slots, flag_i, flag_m, flag_s, counter)
+# ───────────────────────────────────────────────────────────────
+# Backtracking Step Engine
+# ───────────────────────────────────────────────────────────────
+
+## Evaluates a single instruction step with backtracking.
+##
+## Aborts safely (returns null) past one million steps to protect against
+## catastrophic backtracking and infinite loops.
+##
+## ### Parameters
+## - `code`: Bytecode instruction array.
+## - `pc`: Program counter address of the current instruction.
+## - `text`: Input text string.
+## - `pos`: Current byte position in the text.
+## - `text_len`: Total text byte length.
+## - `slots`: Capture slot array mutated during matching.
+## - `flag_i`: Case-insensitive flag (`1` enabled, `0` disabled).
+## - `flag_m`: Multiline flag (`1` enabled, `0` disabled).
+## - `flag_s`: Dot-all flag (`1` enabled, `0` disabled).
+## - `counter`: Single-element step budget array.
+##
+## ### Returns
+## Result slot array on success, null when the path fails.
+pub function _vm_step(code: array, pc: int, text: string, pos: int, text_len: int, slots: array, flag_i: int, flag_m: int, flag_s: int, counter: array)
     # Protection against catastrophic backtracking / infinite loops
     counter[0] += 1
     if counter[0] > 1000000
@@ -233,8 +260,21 @@ pub function _vm_step(code, pc, text, pos, text_len, slots, flag_i, flag_m, flag
     return null
 end
 
-# Executes regex starting exactly at start_pos
-pub function vm_exec_at(reg, text, start_pos, text_len)
+# ───────────────────────────────────────────────────────────────
+# Match Execution & Search
+# ───────────────────────────────────────────────────────────────
+
+## Executes a compiled regex at an exact start position.
+##
+## ### Parameters
+## - `reg`: Compiled `Regex` instance.
+## - `text`: Input text string.
+## - `start_pos`: Byte position where matching must begin.
+## - `text_len`: Total text byte length.
+##
+## ### Returns
+## A `Match` instance on success, null when the position fails.
+pub function vm_exec_at(reg, text: string, start_pos: int, text_len: int)
     let num_slots = (reg.num_groups + 1) * 2
     let slots = []
     let i = 0
@@ -275,8 +315,24 @@ pub function vm_exec_at(reg, text, start_pos, text_len)
     return match_new(m_text, m_start, m_end, groups, spans, reg.named_groups)
 end
 
-# Searches for first match in text starting at or after start_index
-pub function vm_search(reg, text, start_index = 0)
+## Searches for the first match at or after a start index.
+##
+## Anchored patterns only attempt position `0`; otherwise a literal prefix
+## fast-scan skips hopeless start positions before executing bytecode.
+##
+## ### Parameters
+## - `reg`: Compiled `Regex` instance.
+## - `text`: Input text string.
+## - `start_index`: Byte position where the search begins. Defaults to `0`.
+##
+## ### Returns
+## A `Match` instance on success, null when no match exists.
+##
+## ### Examples
+## ```alya
+## let m = vm_search(re, "say hi", 0)
+## ```
+pub function vm_search(reg, text: string, start_index: int = 0)
     let text_len = len(text)
     if start_index > text_len
         return null
@@ -323,8 +379,17 @@ pub function vm_search(reg, text, start_index = 0)
     return null
 end
 
-# Finds all non-overlapping matches in text
-pub function vm_find_all(reg, text)
+## Finds all non-overlapping matches in text order.
+##
+## Zero-width matches advance by one byte to guarantee termination.
+##
+## ### Parameters
+## - `reg`: Compiled `Regex` instance.
+## - `text`: Input text string.
+##
+## ### Returns
+## Array of `Match` instances (possibly empty).
+pub function vm_find_all(reg, text: string) -> array
     let matches = []
     let text_len = len(text)
     let pos = 0
@@ -335,18 +400,33 @@ pub function vm_find_all(reg, text)
             break
         end
         matches.push(m)
-        if m.m_end > m.m_start
-            pos = m.m_end
-        else
-            pos = m.m_start + 1
+        pos = when
+            m.m_end > m.m_start => m.m_end
+            else                => m.m_start + 1
         end
     end
 
     return matches
 end
 
-# Expands replacement templates like $0, $1, ${name}, $&, $$
-pub function _expand_replacement(template_str, m)
+# ───────────────────────────────────────────────────────────────
+# Replacement & Splitting
+# ───────────────────────────────────────────────────────────────
+
+## Expands replacement templates (`$0`, `$1`, `${name}`, `$&`, `$$`).
+##
+## ### Parameters
+## - `template_str`: Replacement template string.
+## - `m`: Match providing capture values.
+##
+## ### Returns
+## The expanded replacement string.
+##
+## ### Examples
+## ```alya
+## say _expand_replacement("$2, $1", m) # "Doe, John"
+## ```
+pub function _expand_replacement(template_str: string, m) -> string
     let tlen = len(template_str)
     let res = ""
     let i = 0
@@ -392,8 +472,17 @@ pub function _expand_replacement(template_str, m)
     return res
 end
 
-# Replaces matched occurrences with replacement template
-pub function vm_replace(reg, text, replacement, is_all = 1)
+## Replaces matched occurrences with an expanded replacement template.
+##
+## ### Parameters
+## - `reg`: Compiled `Regex` instance.
+## - `text`: Input text string.
+## - `replacement`: Replacement template string.
+## - `is_all`: `1` replaces every match, `0` replaces the first only. Defaults to `1`.
+##
+## ### Returns
+## The resulting string with replacements applied.
+pub function vm_replace(reg, text: string, replacement: string, is_all: int = 1) -> string
     let matches = []
     if is_all == 1
         matches = vm_find_all(reg, text)
@@ -431,8 +520,16 @@ pub function vm_replace(reg, text, replacement, is_all = 1)
     return res
 end
 
-# Splits text by regex matches
-pub function vm_split(reg, text, limit = -1)
+## Splits text by regex matches, honoring an optional segment limit.
+##
+## ### Parameters
+## - `reg`: Compiled `Regex` instance.
+## - `text`: Input text string.
+## - `limit`: Maximum segment count (`-1` for unlimited). Defaults to `-1`.
+##
+## ### Returns
+## Array of segment strings.
+pub function vm_split(reg, text: string, limit: int = -1) -> array
     let matches = vm_find_all(reg, text)
     let mcnt = len(matches)
     if mcnt == 0

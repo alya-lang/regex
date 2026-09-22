@@ -1,7 +1,19 @@
-## Types and data structures for regex engine
-## Part of the Alya Language package ecosystem (https://github.com/alya-lang)
+## # regex/types
+##
+## Core types and data structures for the regex engine.
+## Part of the Alya Language package ecosystem (https://github.com/alya-lang).
+##
+## Defines virtual machine opcodes, AST node kinds, bytecode instructions,
+## syntax tree nodes, compiled expressions, and match results.
 
-## Virtual machine instruction opcodes
+# ───────────────────────────────────────────────────────────────
+# Virtual Machine Opcodes
+# ───────────────────────────────────────────────────────────────
+
+## Virtual machine instruction opcodes.
+##
+## Each variant identifies a single bytecode operation executed by the
+## backtracking matching engine (`vm.alya`).
 pub enum Opcode
     Char = 1
     CharCi = 2
@@ -20,24 +32,44 @@ pub enum Opcode
     Lookbehind = 15
 end
 
-## Opcode getters for backward compatibility
-pub function op_char() return Opcode.Char end
-pub function op_char_ci() return Opcode.CharCi end
-pub function op_any() return Opcode.Any end
-pub function op_class() return Opcode.Class end
-pub function op_match() return Opcode.Match end
-pub function op_jump() return Opcode.Jump end
-pub function op_split() return Opcode.Split end
-pub function op_save() return Opcode.Save end
-pub function op_assert_start() return Opcode.AssertStart end
-pub function op_assert_end() return Opcode.AssertEnd end
-pub function op_assert_word() return Opcode.AssertWord end
-pub function op_assert_not_word() return Opcode.AssertNotWord end
-pub function op_backref() return Opcode.Backref end
-pub function op_lookahead() return Opcode.Lookahead end
-pub function op_lookbehind() return Opcode.Lookbehind end
+## Returns the `Char` opcode value (case-sensitive literal byte match).
+pub function op_char() -> int return Opcode.Char end
+## Returns the `CharCi` opcode value (case-insensitive literal match).
+pub function op_char_ci() -> int return Opcode.CharCi end
+## Returns the `Any` opcode value (wildcard dot match).
+pub function op_any() -> int return Opcode.Any end
+## Returns the `Class` opcode value (character class match).
+pub function op_class() -> int return Opcode.Class end
+## Returns the `Match` opcode value (successful match terminator).
+pub function op_match() -> int return Opcode.Match end
+## Returns the `Jump` opcode value (unconditional jump).
+pub function op_jump() -> int return Opcode.Jump end
+## Returns the `Split` opcode value (backtracking fork point).
+pub function op_split() -> int return Opcode.Split end
+## Returns the `Save` opcode value (capture slot position save).
+pub function op_save() -> int return Opcode.Save end
+## Returns the `AssertStart` opcode value (start-of-text assertion).
+pub function op_assert_start() -> int return Opcode.AssertStart end
+## Returns the `AssertEnd` opcode value (end-of-text assertion).
+pub function op_assert_end() -> int return Opcode.AssertEnd end
+## Returns the `AssertWord` opcode value (word boundary assertion).
+pub function op_assert_word() -> int return Opcode.AssertWord end
+## Returns the `AssertNotWord` opcode value (negated word boundary assertion).
+pub function op_assert_not_word() -> int return Opcode.AssertNotWord end
+## Returns the `Backref` opcode value (backreference match).
+pub function op_backref() -> int return Opcode.Backref end
+## Returns the `Lookahead` opcode value (lookahead assertion block).
+pub function op_lookahead() -> int return Opcode.Lookahead end
+## Returns the `Lookbehind` opcode value (lookbehind assertion block).
+pub function op_lookbehind() -> int return Opcode.Lookbehind end
 
-## AST Node kind discriminator enum
+# ───────────────────────────────────────────────────────────────
+# AST Node Kinds
+# ───────────────────────────────────────────────────────────────
+
+## AST node kind discriminator enum.
+##
+## Identifies the syntactic category of each parser-produced `AstNode`.
 pub enum AstKind
     Empty = 0
     Literal = 1
@@ -55,31 +87,69 @@ pub enum AstKind
     Lookaround = 13
 end
 
-## AST node kind getters for backward compatibility
-pub function ast_kind_empty() return AstKind.Empty end
-pub function ast_kind_literal() return AstKind.Literal end
-pub function ast_kind_any() return AstKind.Any end
-pub function ast_kind_class() return AstKind.Class end
-pub function ast_kind_anchor_start() return AstKind.AnchorStart end
-pub function ast_kind_anchor_end() return AstKind.AnchorEnd end
-pub function ast_kind_word_boundary() return AstKind.WordBoundary end
-pub function ast_kind_not_word_boundary() return AstKind.NotWordBoundary end
-pub function ast_kind_concat() return AstKind.Concat end
-pub function ast_kind_alt() return AstKind.Alt end
-pub function ast_kind_group() return AstKind.Group end
-pub function ast_kind_quantifier() return AstKind.Quantifier end
-pub function ast_kind_backref() return AstKind.Backref end
-pub function ast_kind_lookaround() return AstKind.Lookaround end
+## Returns the `Empty` AST kind value.
+pub function ast_kind_empty() -> int return AstKind.Empty end
+## Returns the `Literal` AST kind value.
+pub function ast_kind_literal() -> int return AstKind.Literal end
+## Returns the `Any` AST kind value.
+pub function ast_kind_any() -> int return AstKind.Any end
+## Returns the `Class` AST kind value.
+pub function ast_kind_class() -> int return AstKind.Class end
+## Returns the `AnchorStart` AST kind value.
+pub function ast_kind_anchor_start() -> int return AstKind.AnchorStart end
+## Returns the `AnchorEnd` AST kind value.
+pub function ast_kind_anchor_end() -> int return AstKind.AnchorEnd end
+## Returns the `WordBoundary` AST kind value.
+pub function ast_kind_word_boundary() -> int return AstKind.WordBoundary end
+## Returns the `NotWordBoundary` AST kind value.
+pub function ast_kind_not_word_boundary() -> int return AstKind.NotWordBoundary end
+## Returns the `Concat` AST kind value.
+pub function ast_kind_concat() -> int return AstKind.Concat end
+## Returns the `Alt` AST kind value.
+pub function ast_kind_alt() -> int return AstKind.Alt end
+## Returns the `Group` AST kind value.
+pub function ast_kind_group() -> int return AstKind.Group end
+## Returns the `Quantifier` AST kind value.
+pub function ast_kind_quantifier() -> int return AstKind.Quantifier end
+## Returns the `Backref` AST kind value.
+pub function ast_kind_backref() -> int return AstKind.Backref end
+## Returns the `Lookaround` AST kind value.
+pub function ast_kind_lookaround() -> int return AstKind.Lookaround end
 
-# Struct representing a single virtual machine instruction (internal)
+# ───────────────────────────────────────────────────────────────
+# Internal Records (Instruction & AST Node)
+# ───────────────────────────────────────────────────────────────
+
+## A single virtual machine instruction (internal).
+##
+## ### Fields
+## - `op`: `Opcode` value identifying the operation.
+## - `arg1`: First numeric operand (target address, slot index, or byte value).
+## - `arg2`: Second numeric operand (branch target or flag value).
+## - `inst_sub`: Embedded sub-program for lookaround assertions.
 struct Instruction
-    op,
-    arg1,
-    arg2,
+    op: int,
+    arg1: int,
+    arg2: int,
     inst_sub: any[]
 end
 
-pub function inst_new(op, arg1 = 0, arg2 = 0, inst_sub: any[] = [])
+## Factory constructor creating a virtual machine `Instruction`.
+##
+## ### Parameters
+## - `op`: `Opcode` value identifying the operation.
+## - `arg1`: First numeric operand. Defaults to `0`.
+## - `arg2`: Second numeric operand. Defaults to `0`.
+## - `inst_sub`: Embedded sub-program array. Defaults to `[]`.
+##
+## ### Returns
+## A newly initialized `Instruction` instance.
+##
+## ### Examples
+## ```alya
+## let inst = inst_new(op_char(), 97)
+## ```
+pub function inst_new(op: int, arg1: int = 0, arg2: int = 0, inst_sub: any[] = [])
     return Instruction {
         op: op,
         arg1: arg1,
@@ -88,17 +158,42 @@ pub function inst_new(op, arg1 = 0, arg2 = 0, inst_sub: any[] = [])
     }
 end
 
-# Struct representing an AST node (internal)
+## A syntax tree node produced by the parser (internal).
+##
+## ### Fields
+## - `kind`: `AstKind` discriminator value.
+## - `val1`: First numeric payload (byte value, group id, or quantifier bound).
+## - `val2`: Second numeric payload (capture flag or quantifier bound).
+## - `node_data`: Auxiliary numeric data array (e.g. laziness flag).
+## - `children`: Child node array for composite expressions.
+## - `group_name`: Named group identifier, or `""` for anonymous nodes.
 struct AstNode
-    kind,
-    val1,
-    val2,
+    kind: int,
+    val1: int,
+    val2: int,
     node_data: any[],
     children: any[],
-    group_name
+    group_name: string
 end
 
-pub function ast_node_new(kind, val1 = 0, val2 = 0, node_data: any[] = [], children: any[] = [], group_name = "")
+## Factory constructor creating an `AstNode`.
+##
+## ### Parameters
+## - `kind`: `AstKind` discriminator value.
+## - `val1`: First numeric payload. Defaults to `0`.
+## - `val2`: Second numeric payload. Defaults to `0`.
+## - `node_data`: Auxiliary numeric data array. Defaults to `[]`.
+## - `children`: Child node array. Defaults to `[]`.
+## - `group_name`: Named group identifier. Defaults to `""`.
+##
+## ### Returns
+## A newly initialized `AstNode` instance.
+##
+## ### Examples
+## ```alya
+## let node = ast_node_new(ast_kind_literal(), 97)
+## ```
+pub function ast_node_new(kind: int, val1: int = 0, val2: int = 0, node_data: any[] = [], children: any[] = [], group_name: string = "")
     return AstNode {
         kind: kind,
         val1: val1,
@@ -109,23 +204,58 @@ pub function ast_node_new(kind, val1 = 0, val2 = 0, node_data: any[] = [], child
     }
 end
 
-## Compiled regular expression instance
+# ───────────────────────────────────────────────────────────────
+# Compiled Expression & Match Result
+# ───────────────────────────────────────────────────────────────
+
+## Compiled regular expression instance.
+##
+## Produced by `compile_regex` and consumed by the matching engine.
+##
+## ### Fields
+## - `pattern`: Original pattern source string.
+## - `flags`: Modifier flags string (`"i"`, `"m"`, `"s"`).
+## - `code`: Bytecode instruction array.
+## - `num_groups`: Total capturing group count.
+## - `is_anchored`: `1` when the pattern is anchored to the text start.
+## - `prefix`: Literal prefix used for fast-scan optimization.
+## - `flag_i`: `1` when case-insensitive matching is enabled.
+## - `flag_m`: `1` when multiline anchors are enabled.
+## - `flag_s`: `1` when dot matches newlines.
+## - `named_groups`: Map of group names to group indexes.
+## - `group_names`: Map of group indexes to group names.
 pub struct Regex
-    pattern,
-    flags,
+    pattern: string,
+    flags: string,
     code: any[],
-    num_groups,
-    is_anchored,
-    prefix,
-    flag_i,
-    flag_m,
-    flag_s,
-    named_groups,
-    group_names
+    num_groups: int,
+    is_anchored: int,
+    prefix: string,
+    flag_i: int,
+    flag_m: int,
+    flag_s: int,
+    named_groups: map,
+    group_names: map
 end
 
-## Creates a new Regex instance
-pub function regex_new(pattern, flags, code: any[], num_groups, is_anchored, prefix, flag_i, flag_m, flag_s, named_groups = {}, group_names = {})
+## Factory constructor creating a compiled `Regex` instance.
+##
+## ### Parameters
+## - `pattern`: Original pattern source string.
+## - `flags`: Modifier flags string.
+## - `code`: Bytecode instruction array.
+## - `num_groups`: Total capturing group count.
+## - `is_anchored`: `1` when anchored to the text start, `0` otherwise.
+## - `prefix`: Literal prefix for fast-scan optimization.
+## - `flag_i`: Case-insensitive flag (`1` enabled, `0` disabled).
+## - `flag_m`: Multiline flag (`1` enabled, `0` disabled).
+## - `flag_s`: Dot-all flag (`1` enabled, `0` disabled).
+## - `named_groups`: Map of group names to group indexes. Defaults to `{}`.
+## - `group_names`: Map of group indexes to group names. Defaults to `{}`.
+##
+## ### Returns
+## A newly initialized `Regex` instance.
+pub function regex_new(pattern: string, flags: string, code: any[], num_groups: int, is_anchored: int, prefix: string, flag_i: int, flag_m: int, flag_s: int, named_groups = {}, group_names = {})
     return Regex {
         pattern: pattern,
         flags: flags,
@@ -141,18 +271,37 @@ pub function regex_new(pattern, flags, code: any[], num_groups, is_anchored, pre
     }
 end
 
-## Represents a successful regex match with matched text and capture groups
+## A successful regex match with matched text and capture groups.
+##
+## ### Fields
+## - `m_text`: Full matched substring.
+## - `m_start`: Starting 0-indexed byte offset of the match.
+## - `m_end`: Ending 0-indexed byte offset (exclusive) of the match.
+## - `m_groups`: Array of captured group strings (index `0` is the full match).
+## - `m_spans`: Array of `[start, end]` span pairs per group.
+## - `m_named_groups`: Map of group names to group indexes.
 pub struct Match
-    m_text
-    m_start
-    m_end
-    m_groups
-    m_spans
-    m_named_groups
+    m_text: string
+    m_start: int
+    m_end: int
+    m_groups: array
+    m_spans: array
+    m_named_groups: map
 end
 
-## Creates a new Match instance
-pub function match_new(text, start_pos, end_pos, groups = [], spans = [], named_groups = {})
+## Factory constructor creating a `Match` instance.
+##
+## ### Parameters
+## - `text`: Full matched substring.
+## - `start_pos`: Starting 0-indexed byte offset.
+## - `end_pos`: Ending 0-indexed byte offset (exclusive).
+## - `groups`: Captured group strings array. Defaults to `[]`.
+## - `spans`: Group span pairs array. Defaults to `[]`.
+## - `named_groups`: Map of group names to group indexes. Defaults to `{}`.
+##
+## ### Returns
+## A newly initialized `Match` instance.
+pub function match_new(text: string, start_pos: int, end_pos: int, groups: array = [], spans: array = [], named_groups = {})
     return Match {
         m_text: text,
         m_start: start_pos,
@@ -163,32 +312,80 @@ pub function match_new(text, start_pos, end_pos, groups = [], spans = [], named_
     }
 end
 
-## Returns full matched text
-pub function match_text(m)
+# ───────────────────────────────────────────────────────────────
+# Match Accessors
+# ───────────────────────────────────────────────────────────────
+
+## Returns the full matched text, or `""` for a null match.
+##
+## ### Parameters
+## - `m`: Target `Match` instance (or null).
+##
+## ### Returns
+## The matched substring string.
+##
+## ### Examples
+## ```alya
+## let m = find(re, "Today is 2026-09-16")
+## say match_text(m) # "2026-09-16"
+## ```
+pub function match_text(m) -> string
     if m is null return "" end
     return m.m_text
 end
 
-## Returns starting 0-indexed byte offset of match
-pub function match_start(m)
+## Returns the starting 0-indexed byte offset of the match, or `-1` for null.
+##
+## ### Parameters
+## - `m`: Target `Match` instance (or null).
+##
+## ### Returns
+## The match start offset integer.
+pub function match_start(m) -> int
     if m is null return -1 end
     return m.m_start
 end
 
-## Returns ending 0-indexed byte offset (exclusive) of match
-pub function match_end(m)
+## Returns the ending 0-indexed byte offset (exclusive), or `-1` for null.
+##
+## ### Parameters
+## - `m`: Target `Match` instance (or null).
+##
+## ### Returns
+## The match end offset integer.
+pub function match_end(m) -> int
     if m is null return -1 end
     return m.m_end
 end
 
-## Returns byte length of matched substring
-pub function match_len(m)
+## Returns the byte length of the matched substring, or `0` for null.
+##
+## ### Parameters
+## - `m`: Target `Match` instance (or null).
+##
+## ### Returns
+## The matched byte length integer.
+pub function match_len(m) -> int
     if m is null return 0 end
     return m.m_end - m.m_start
 end
 
-## Returns captured group text by 1-indexed group number (or 0 for entire match)
-pub function match_group(m, idx = 0)
+## Returns captured group text by 1-indexed group number (`0` for entire match).
+##
+## Out-of-range indexes safely return `""`.
+##
+## ### Parameters
+## - `m`: Target `Match` instance (or null).
+## - `idx`: Group index (`0` for the full match). Defaults to `0`.
+##
+## ### Returns
+## The captured group string, or `""` when missing.
+##
+## ### Examples
+## ```alya
+## say match_group(m, 1) # "2026"
+## ```
+pub function match_group(m, idx: int = 0) -> string
     if m is null return "" end
     let groups = m.m_groups
     let i = int(idx)
@@ -198,8 +395,20 @@ pub function match_group(m, idx = 0)
     return ""
 end
 
-## Returns captured group text by group name
-pub function match_named(m, name)
+## Returns captured group text by group name, or `""` when missing.
+##
+## ### Parameters
+## - `m`: Target `Match` instance (or null).
+## - `name`: Capture group name string.
+##
+## ### Returns
+## The named group string, or `""` when missing.
+##
+## ### Examples
+## ```alya
+## say match_named(m, "year") # "2026"
+## ```
+pub function match_named(m, name: string) -> string
     if m is null return "" end
     let named = m.m_named_groups
     if named is not null
@@ -211,14 +420,27 @@ pub function match_named(m, name)
     return ""
 end
 
-## Returns array of all captured group strings
-pub function match_groups(m)
+## Returns the array of all captured group strings, or `[]` for null.
+##
+## ### Parameters
+## - `m`: Target `Match` instance (or null).
+##
+## ### Returns
+## Array of captured group strings.
+pub function match_groups(m) -> array
     if m is null return [] end
     return m.m_groups
 end
 
-## Returns [start, end] span array for group idx
-pub function match_span(m, idx = 0)
+## Returns the `[start, end]` span array for a group index.
+##
+## ### Parameters
+## - `m`: Target `Match` instance (or null).
+## - `idx`: Group index (`0` for the full match). Defaults to `0`.
+##
+## ### Returns
+## Two-element span array, or `[-1, -1]` when missing.
+pub function match_span(m, idx: int = 0) -> array
     if m is null return [-1, -1] end
     let spans = m.m_spans
     if idx >= 0 and idx < len(spans)
@@ -227,44 +449,97 @@ pub function match_span(m, idx = 0)
     return [-1, -1]
 end
 
-# --- Struct Methods (Alya v0.0.18) ---
+# ───────────────────────────────────────────────────────────────
+# Match Struct Methods
+# ───────────────────────────────────────────────────────────────
 
-## Returns matched text
-pub function Match.text(self)
+## Returns the matched text.
+##
+## ### Parameters
+## - `self`: The target `Match` instance.
+##
+## ### Returns
+## The matched substring string.
+pub function Match.text(self: Match) -> string
     return match_text(self)
 end
 
-## Returns match start position
-pub function Match.start(self)
+## Returns the match start position.
+##
+## ### Parameters
+## - `self`: The target `Match` instance.
+##
+## ### Returns
+## The starting 0-indexed byte offset integer.
+pub function Match.start(self: Match) -> int
     return match_start(self)
 end
 
-## Returns match end position
-pub function Match.end_pos(self)
+## Returns the match end position.
+##
+## ### Parameters
+## - `self`: The target `Match` instance.
+##
+## ### Returns
+## The ending 0-indexed byte offset integer.
+pub function Match.end_pos(self: Match) -> int
     return match_end(self)
 end
 
-## Returns match length
-pub function Match.len(self)
+## Returns the match length in bytes.
+##
+## ### Parameters
+## - `self`: The target `Match` instance.
+##
+## ### Returns
+## The matched byte length integer.
+pub function Match.len(self: Match) -> int
     return match_len(self)
 end
 
-## Returns captured group by index
-pub function Match.group(self, idx = 0)
+## Returns captured group text by index.
+##
+## ### Parameters
+## - `self`: The target `Match` instance.
+## - `idx`: Group index (`0` for the full match). Defaults to `0`.
+##
+## ### Returns
+## The captured group string, or `""` when missing.
+pub function Match.group(self: Match, idx: int = 0) -> string
     return match_group(self, idx)
 end
 
-## Returns captured group by name
-pub function Match.named(self, name)
+## Returns captured group text by name.
+##
+## ### Parameters
+## - `self`: The target `Match` instance.
+## - `name`: Capture group name string.
+##
+## ### Returns
+## The named group string, or `""` when missing.
+pub function Match.named(self: Match, name: string) -> string
     return match_named(self, name)
 end
 
-## Returns all captured group strings
-pub function Match.groups(self)
+## Returns all captured group strings.
+##
+## ### Parameters
+## - `self`: The target `Match` instance.
+##
+## ### Returns
+## Array of captured group strings.
+pub function Match.groups(self: Match) -> array
     return match_groups(self)
 end
 
-## Returns [start, end] span for group index
-pub function Match.span(self, idx = 0)
+## Returns the `[start, end]` span for a group index.
+##
+## ### Parameters
+## - `self`: The target `Match` instance.
+## - `idx`: Group index (`0` for the full match). Defaults to `0`.
+##
+## ### Returns
+## Two-element span array, or `[-1, -1]` when missing.
+pub function Match.span(self: Match, idx: int = 0) -> array
     return match_span(self, idx)
 end

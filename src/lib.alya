@@ -1,5 +1,10 @@
-## regex - High-performance Regular Expression Library for Alya
-## Part of the Alya Language package ecosystem (https://github.com/alya-lang)
+## # regex
+##
+## High-performance regular expression library for Alya.
+## Part of the Alya Language package ecosystem (https://github.com/alya-lang).
+##
+## Provides linear-time matching with named capture groups, lookarounds,
+## global multilingual Unicode support, replacement templates, and splitting.
 
 import "./types.alya"
 import "./utils.alya"
@@ -10,20 +15,38 @@ import "./vm.alya"
 # Compilation & Pattern Creation
 # ═══════════════════════════════════════════════════════════════
 
-## Compiles a regular expression pattern into a Regex object
+## Compiles a regular expression pattern into a `Regex` object.
 ##
 ## ### Parameters
-## - `pattern`: Regex pattern string
-## - `flags`: Optional modifier flags string ("i", "m", "s", etc.)
+## - `pattern`: Regex pattern string.
+## - `flags`: Optional modifier flags string (`"i"`, `"m"`, `"s"`). Defaults to `""`.
 ##
 ## ### Returns
-## Compiled `Regex` object ready for matching operations
-pub function compile(pattern, flags = "")
+## Compiled `Regex` object ready for matching operations.
+##
+## ### Examples
+## ```alya
+## let re = compile("^hi", "i")
+## say is_match(re, "HI there") # 1
+## ```
+pub function compile(pattern: string, flags: string = "") -> Regex
     return compile_regex(pattern, flags)
 end
 
-## Alias for `compile`
-pub function regex(pattern, flags = "")
+## Alias for `compile`.
+##
+## ### Parameters
+## - `pattern`: Regex pattern string.
+## - `flags`: Optional modifier flags string. Defaults to `""`.
+##
+## ### Returns
+## Compiled `Regex` object ready for matching operations.
+##
+## ### Examples
+## ```alya
+## let re = regex("\\d+")
+## ```
+pub function regex(pattern: string, flags: string = "") -> Regex
     return compile_regex(pattern, flags)
 end
 
@@ -31,129 +54,333 @@ end
 # Operations on Compiled Regex
 # ═══════════════════════════════════════════════════════════════
 
-## Returns 1 if regex matches any part of text, 0 otherwise
-pub function is_match(reg, text)
+## Returns `1` when the regex matches any part of text, `0` otherwise.
+##
+## ### Parameters
+## - `reg`: Compiled `Regex` instance (or null).
+## - `text`: Input text string.
+##
+## ### Returns
+## `1` on match, `0` otherwise.
+##
+## ### Examples
+## ```alya
+## say is_match(re, "say hello") # 1
+## ```
+pub function is_match(reg, text: string) -> int
     if reg is null return 0 end
     let m = vm_search(reg, text, 0)
-    if m is not null
-        return 1
+    return when
+        m is not null => 1
+        else          => 0
     end
-    return 0
 end
 
-## Searches for the first match in text; returns Match struct or null
-pub function find(reg, text)
-    if reg is null return null end
-    return vm_search(reg, text, 0)
+## Searches for the first match in text; returns a `Match` struct or null.
+##
+## ### Parameters
+## - `reg`: Compiled `Regex` instance (or null).
+## - `text`: Input text string.
+##
+## ### Returns
+## The first `Match` instance, or null when nothing matches.
+##
+## ### Examples
+## ```alya
+## let m = find(re, "Today is 2026-09-16")
+## ```
+pub function find(reg, text: string)
+    return when
+        reg is null => null
+        else        => vm_search(reg, text, 0)
+    end
 end
 
-## Finds all non-overlapping matches in text; returns array of Match structs
-pub function find_all(reg, text)
-    if reg is null return [] end
-    return vm_find_all(reg, text)
+## Finds all non-overlapping matches; returns an array of `Match` structs.
+##
+## ### Parameters
+## - `reg`: Compiled `Regex` instance (or null).
+## - `text`: Input text string.
+##
+## ### Returns
+## Array of `Match` instances (possibly empty).
+pub function find_all(reg, text: string) -> array
+    return when
+        reg is null => []
+        else        => vm_find_all(reg, text)
+    end
 end
 
-## Replaces the first match in text using replacement template ($0, $1, etc.)
-pub function replace(reg, text, replacement)
-    if reg is null return text end
-    return vm_replace(reg, text, replacement, 0)
+## Replaces the first match using a replacement template (`$0`, `$1`, ...).
+##
+## ### Parameters
+## - `reg`: Compiled `Regex` instance (or null).
+## - `text`: Input text string.
+## - `replacement`: Replacement template string.
+##
+## ### Returns
+## The resulting string with the first match replaced.
+##
+## ### Examples
+## ```alya
+## say replace(re, "John Doe", "$1") # "John"
+## ```
+pub function replace(reg, text: string, replacement: string) -> string
+    return when
+        reg is null => text
+        else        => vm_replace(reg, text, replacement, 0)
+    end
 end
 
-## Replaces all matches in text using replacement template ($0, $1, etc.)
-pub function replace_all(reg, text, replacement)
-    if reg is null return text end
-    return vm_replace(reg, text, replacement, 1)
+## Replaces all matches using a replacement template (`$0`, `$1`, ...).
+##
+## ### Parameters
+## - `reg`: Compiled `Regex` instance (or null).
+## - `text`: Input text string.
+## - `replacement`: Replacement template string.
+##
+## ### Returns
+## The resulting string with all matches replaced.
+pub function replace_all(reg, text: string, replacement: string) -> string
+    return when
+        reg is null => text
+        else        => vm_replace(reg, text, replacement, 1)
+    end
 end
 
-## Splits text by matches of the regex
-pub function split(reg, text, limit = -1)
-    if reg is null return [text] end
-    return vm_split(reg, text, limit)
+## Splits text by matches of the regex.
+##
+## ### Parameters
+## - `reg`: Compiled `Regex` instance (or null).
+## - `text`: Input text string.
+## - `limit`: Maximum segment count (`-1` for unlimited). Defaults to `-1`.
+##
+## ### Returns
+## Array of segment strings.
+##
+## ### Examples
+## ```alya
+## say split(re, "alpha, beta") # ["alpha", " beta"]
+## ```
+pub function split(reg, text: string, limit: int = -1) -> array
+    return when
+        reg is null => [text]
+        else        => vm_split(reg, text, limit)
+    end
 end
 
 # ═══════════════════════════════════════════════════════════════
 # Pattern One-Liner Convenience Functions
 # ═══════════════════════════════════════════════════════════════
 
-## Tests if pattern matches text without pre-compiling
-pub function test(pattern, text, flags = "")
+## Tests whether a pattern matches text without pre-compiling.
+##
+## ### Parameters
+## - `pattern`: Regex pattern string.
+## - `text`: Input text string.
+## - `flags`: Optional modifier flags string. Defaults to `""`.
+##
+## ### Returns
+## `1` on match, `0` otherwise.
+##
+## ### Examples
+## ```alya
+## say test("^\\d+$", "123456") # 1
+## ```
+pub function test(pattern: string, text: string, flags: string = "") -> int
     let reg = compile_regex(pattern, flags)
     return is_match(reg, text)
 end
 
-## Finds first match of pattern in text
-pub function find_pattern(pattern, text, flags = "")
+## Finds the first match of a pattern in text without pre-compiling.
+##
+## ### Parameters
+## - `pattern`: Regex pattern string.
+## - `text`: Input text string.
+## - `flags`: Optional modifier flags string. Defaults to `""`.
+##
+## ### Returns
+## The first `Match` instance, or null when nothing matches.
+pub function find_pattern(pattern: string, text: string, flags: string = "")
     let reg = compile_regex(pattern, flags)
     return find(reg, text)
 end
 
-## Alias for `find_pattern`
-pub function match_pattern(pattern, text, flags = "")
+## Alias for `find_pattern`.
+##
+## ### Parameters
+## - `pattern`: Regex pattern string.
+## - `text`: Input text string.
+## - `flags`: Optional modifier flags string. Defaults to `""`.
+##
+## ### Returns
+## The first `Match` instance, or null when nothing matches.
+pub function match_pattern(pattern: string, text: string, flags: string = "")
     return find_pattern(pattern, text, flags)
 end
 
-## Finds all matches of pattern in text
-pub function find_all_pattern(pattern, text, flags = "")
+## Finds all matches of a pattern in text without pre-compiling.
+##
+## ### Parameters
+## - `pattern`: Regex pattern string.
+## - `text`: Input text string.
+## - `flags`: Optional modifier flags string. Defaults to `""`.
+##
+## ### Returns
+## Array of `Match` instances (possibly empty).
+pub function find_all_pattern(pattern: string, text: string, flags: string = "") -> array
     let reg = compile_regex(pattern, flags)
     return find_all(reg, text)
 end
 
-## Replaces first occurrence of pattern in text
-pub function replace_pattern(pattern, text, replacement, flags = "")
+## Replaces the first occurrence of a pattern in text.
+##
+## ### Parameters
+## - `pattern`: Regex pattern string.
+## - `text`: Input text string.
+## - `replacement`: Replacement template string.
+## - `flags`: Optional modifier flags string. Defaults to `""`.
+##
+## ### Returns
+## The resulting string with the first occurrence replaced.
+pub function replace_pattern(pattern: string, text: string, replacement: string, flags: string = "") -> string
     let reg = compile_regex(pattern, flags)
     return replace(reg, text, replacement)
 end
 
-## Replaces all occurrences of pattern in text
-pub function replace_all_pattern(pattern, text, replacement, flags = "")
+## Replaces all occurrences of a pattern in text.
+##
+## ### Parameters
+## - `pattern`: Regex pattern string.
+## - `text`: Input text string.
+## - `replacement`: Replacement template string.
+## - `flags`: Optional modifier flags string. Defaults to `""`.
+##
+## ### Returns
+## The resulting string with all occurrences replaced.
+pub function replace_all_pattern(pattern: string, text: string, replacement: string, flags: string = "") -> string
     let reg = compile_regex(pattern, flags)
     return replace_all(reg, text, replacement)
 end
 
-## Splits text by pattern
-pub function split_pattern(pattern, text, limit = -1, flags = "")
+## Splits text by a pattern without pre-compiling.
+##
+## ### Parameters
+## - `pattern`: Regex pattern string.
+## - `text`: Input text string.
+## - `limit`: Maximum segment count (`-1` for unlimited). Defaults to `-1`.
+## - `flags`: Optional modifier flags string. Defaults to `""`.
+##
+## ### Returns
+## Array of segment strings.
+pub function split_pattern(pattern: string, text: string, limit: int = -1, flags: string = "") -> array
     let reg = compile_regex(pattern, flags)
     return split(reg, text, limit)
 end
 
-## Escapes special regular expression characters in a literal string
-pub function escape(str_val)
+## Escapes special regular expression characters in a literal string.
+##
+## ### Parameters
+## - `str_val`: Raw literal string.
+##
+## ### Returns
+## Escaped string safe to embed in a pattern.
+##
+## ### Examples
+## ```alya
+## say escape("file.name*") # "file\\.name\\*"
+## ```
+pub function escape(str_val: string) -> string
     return escape_pattern(str_val)
 end
 
-## Retrieves captured group text by its name
-pub function get_named(m, name)
+## Retrieves captured group text by its name.
+##
+## ### Parameters
+## - `m`: Target `Match` instance (or null).
+## - `name`: Capture group name string.
+##
+## ### Returns
+## The named group string, or `""` when missing.
+pub function get_named(m, name: string) -> string
     return match_named(m, name)
 end
 
-# --- Struct Methods (Alya v0.0.18) ---
+# ───────────────────────────────────────────────────────────────
+# Regex Struct Methods
+# ───────────────────────────────────────────────────────────────
 
-## Tests if regex matches text
-pub function Regex.is_match(self, text)
+## Tests whether this regex matches any part of text.
+##
+## ### Parameters
+## - `self`: The target `Regex` instance.
+## - `text`: Input text string.
+##
+## ### Returns
+## `1` on match, `0` otherwise.
+pub function Regex.is_match(self: Regex, text: string) -> int
     return is_match(self, text)
 end
 
-## Finds first match of regex in text
-pub function Regex.find(self, text)
+## Finds the first match of this regex in text.
+##
+## ### Parameters
+## - `self`: The target `Regex` instance.
+## - `text`: Input text string.
+##
+## ### Returns
+## The first `Match` instance, or null when nothing matches.
+pub function Regex.find(self: Regex, text: string)
     return find(self, text)
 end
 
-## Finds all non-overlapping matches of regex in text
-pub function Regex.find_all(self, text)
+## Finds all non-overlapping matches of this regex in text.
+##
+## ### Parameters
+## - `self`: The target `Regex` instance.
+## - `text`: Input text string.
+##
+## ### Returns
+## Array of `Match` instances (possibly empty).
+pub function Regex.find_all(self: Regex, text: string) -> array
     return find_all(self, text)
 end
 
-## Replaces first match in text with replacement template
-pub function Regex.replace(self, text, replacement)
+## Replaces the first match in text with a replacement template.
+##
+## ### Parameters
+## - `self`: The target `Regex` instance.
+## - `text`: Input text string.
+## - `replacement`: Replacement template string.
+##
+## ### Returns
+## The resulting string with the first match replaced.
+pub function Regex.replace(self: Regex, text: string, replacement: string) -> string
     return replace(self, text, replacement)
 end
 
-## Replaces all matches in text with replacement template
-pub function Regex.replace_all(self, text, replacement)
+## Replaces all matches in text with a replacement template.
+##
+## ### Parameters
+## - `self`: The target `Regex` instance.
+## - `text`: Input text string.
+## - `replacement`: Replacement template string.
+##
+## ### Returns
+## The resulting string with all matches replaced.
+pub function Regex.replace_all(self: Regex, text: string, replacement: string) -> string
     return replace_all(self, text, replacement)
 end
 
-## Splits text by matches of this regex
-pub function Regex.split(self, text, limit = -1)
+## Splits text by matches of this regex.
+##
+## ### Parameters
+## - `self`: The target `Regex` instance.
+## - `text`: Input text string.
+## - `limit`: Maximum segment count (`-1` for unlimited). Defaults to `-1`.
+##
+## ### Returns
+## Array of segment strings.
+pub function Regex.split(self: Regex, text: string, limit: int = -1) -> array
     return split(self, text, limit)
 end

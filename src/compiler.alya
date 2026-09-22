@@ -1,18 +1,43 @@
-# Bytecode compiler: Translates AST into Virtual Machine instructions
-# Part of the Alya Language package ecosystem (https://github.com/alya-lang)
+## # regex/compiler
+##
+## Bytecode compiler translating the regex AST into VM instructions.
+## Part of the Alya Language package ecosystem (https://github.com/alya-lang).
+##
+## Emits linear bytecode with backpatching for alternation branches and
+## greedy/lazy quantifier loops, plus anchor and prefix optimizations.
 
 import "./types.alya"
 import "./utils.alya"
 import "./parser.alya"
 
+# ───────────────────────────────────────────────────────────────
+# Compiler State & Emission
+# ───────────────────────────────────────────────────────────────
+
+## Mutable bytecode emission buffer (internal).
+##
+## ### Fields
+## - `instructions`: Emitted instruction array.
+## - `flag_i`: `1` when case-insensitive matching is enabled.
+## - `flag_m`: `1` when multiline anchors are enabled.
+## - `flag_s`: `1` when dot matches newlines.
 struct CompilerState
-    instructions
-    flag_i
-    flag_m
-    flag_s
+    instructions: array
+    flag_i: int
+    flag_m: int
+    flag_s: int
 end
 
-pub function compiler_state_new(flag_i = 0, flag_m = 0, flag_s = 0)
+## Creates a bytecode emission buffer with active modifier flags.
+##
+## ### Parameters
+## - `flag_i`: Case-insensitive flag. Defaults to `0`.
+## - `flag_m`: Multiline flag. Defaults to `0`.
+## - `flag_s`: Dot-all flag. Defaults to `0`.
+##
+## ### Returns
+## A newly initialized `CompilerState` instance.
+pub function compiler_state_new(flag_i: int = 0, flag_m: int = 0, flag_s: int = 0)
     return CompilerState {
         instructions: [],
         flag_i: flag_i,
@@ -21,24 +46,66 @@ pub function compiler_state_new(flag_i = 0, flag_m = 0, flag_s = 0)
     }
 end
 
-pub function _c_emit(c, inst)
+## Appends an instruction to the buffer and returns its address.
+##
+## ### Parameters
+## - `c`: Target `CompilerState` instance.
+## - `inst`: Instruction to emit.
+##
+## ### Returns
+## Program counter address of the emitted instruction.
+pub function _c_emit(c: CompilerState, inst) -> int
     c.instructions.push(inst)
     return len(c.instructions) - 1
 end
 
-pub function _c_pc(c)
+## Returns the program counter address of the next instruction.
+##
+## ### Parameters
+## - `c`: Target `CompilerState` instance.
+##
+## ### Returns
+## Current instruction count used as the next address.
+pub function _c_pc(c: CompilerState) -> int
     return len(c.instructions)
 end
 
-pub function _c_patch_arg1(c, pc, target)
+## Backpatches the first operand of a previously emitted instruction.
+##
+## ### Parameters
+## - `c`: Target `CompilerState` instance.
+## - `pc`: Instruction address to patch.
+## - `target`: Jump target address to write.
+pub function _c_patch_arg1(c: CompilerState, pc: int, target: int)
     c.instructions[pc].arg1 = target
 end
 
-pub function _c_patch_arg2(c, pc, target)
+## Backpatches the second operand of a previously emitted instruction.
+##
+## ### Parameters
+## - `c`: Target `CompilerState` instance.
+## - `pc`: Instruction address to patch.
+## - `target`: Jump target address to write.
+pub function _c_patch_arg2(c: CompilerState, pc: int, target: int)
     c.instructions[pc].arg2 = target
 end
 
-pub function _c_compile_node(c, node)
+# ───────────────────────────────────────────────────────────────
+# Node Compilation
+# ───────────────────────────────────────────────────────────────
+
+## Compiles a single AST node into the instruction buffer.
+##
+## Recursively handles literals, classes, anchors, groups, alternation
+## branches, greedy/lazy quantifiers, backreferences, and lookarounds.
+##
+## ### Parameters
+## - `c`: Target `CompilerState` instance.
+## - `node`: AST node to compile.
+##
+## ### Returns
+## `0` on completion.
+pub function _c_compile_node(c: CompilerState, node) -> int
     if node is null return 0 end
     let kind = node.kind
 
@@ -223,8 +290,21 @@ pub function _c_compile_node(c, node)
     return 0
 end
 
-# Checks if root AST node is anchored to start of string
-pub function _check_is_anchored(ast, flag_m)
+# ───────────────────────────────────────────────────────────────
+# Optimization Helpers
+# ───────────────────────────────────────────────────────────────
+
+## Checks whether the root AST node is anchored to the text start.
+##
+## Multiline mode disables the fast anchored path.
+##
+## ### Parameters
+## - `ast`: Root AST node.
+## - `flag_m`: Multiline flag (`1` enabled, `0` disabled).
+##
+## ### Returns
+## `1` when matching may start at position `0` only, `0` otherwise.
+pub function _check_is_anchored(ast, flag_m: int) -> int
     if flag_m == 1 return 0 end
     if ast is null return 0 end
     if ast.kind == ast_kind_anchor_start() return 1 end
@@ -236,8 +316,18 @@ pub function _check_is_anchored(ast, flag_m)
     return 0
 end
 
-# Extracts literal prefix for fast scan optimization
-pub function _extract_literal_prefix(ast, flag_i)
+## Extracts a literal prefix for the fast-scan optimization.
+##
+## Only leading literal bytes qualify; matching stops at the first
+## non-literal node so the scanner can skip hopeless start positions.
+##
+## ### Parameters
+## - `ast`: Root AST node.
+## - `flag_i`: Case-insensitive flag (`1` enabled, `0` disabled).
+##
+## ### Returns
+## The literal prefix string (possibly empty).
+pub function _extract_literal_prefix(ast, flag_i: int) -> string
     if ast is null return "" end
     let prefix = ""
     let nodes = []
@@ -266,8 +356,25 @@ pub function _extract_literal_prefix(ast, flag_i)
     return prefix
 end
 
-# Compiles regex pattern into a Regex struct
-pub function compile_regex(pattern, flags = "")
+# ───────────────────────────────────────────────────────────────
+# Entry Point
+# ───────────────────────────────────────────────────────────────
+
+## Compiles a regex pattern into a `Regex` struct ready for matching.
+##
+## ### Parameters
+## - `pattern`: Pattern source string.
+## - `flags`: Modifier flags string. Defaults to `""`.
+##
+## ### Returns
+## A compiled `Regex` instance with bytecode and optimization metadata.
+##
+## ### Examples
+## ```alya
+## let re = compile_regex("^hi", "i")
+## say is_match(re, "HI there") # 1
+## ```
+pub function compile_regex(pattern: string, flags: string = "") -> Regex
     let parsed = parse_regex_ast(pattern, flags)
     let ast = parsed[0]
     let group_count = parsed[1]
