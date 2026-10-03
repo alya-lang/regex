@@ -23,7 +23,7 @@
 ## say is_ascii_letter("G") # 1
 ## say is_ascii_letter("5") # 0
 ## ```
-pub function is_ascii_letter(ch: string) -> int
+pub function is_ascii_letter(ch: string) -> bool
     if len(ch) == 0 return false end
     let c = ord(ch)
     if (c >= 65 and c <= 90) or (c >= 97 and c <= 122)
@@ -44,7 +44,7 @@ end
 ## ```alya
 ## say is_digit("7") # 1
 ## ```
-pub function is_digit(ch: string) -> int
+pub function is_digit(ch: string) -> bool
     if len(ch) == 0 return false end
     let c = ord(ch)
     if c >= 48 and c <= 57
@@ -60,7 +60,7 @@ end
 ##
 ## ### Returns
 ## `1` when the character is a hex digit, `0` otherwise.
-pub function is_hex_digit(ch: string) -> int
+pub function is_hex_digit(ch: string) -> bool
     if len(ch) == 0 return false end
     let c = ord(ch)
     if (c >= 48 and c <= 57) or (c >= 65 and c <= 70) or (c >= 97 and c <= 102)
@@ -136,7 +136,7 @@ end
 ##
 ## ### Returns
 ## `1` when the character is a word character, `0` otherwise.
-pub function is_word_char(ch: string) -> int
+pub function is_word_char(ch: string) -> bool
     if len(ch) == 0 return false end
     let c = ord(ch)
     if (c >= 48 and c <= 57) or (c >= 65 and c <= 90) or (c >= 97 and c <= 122) or c == 95
@@ -158,7 +158,7 @@ end
 ##
 ## ### Returns
 ## `1` when the character is whitespace, `0` otherwise.
-pub function is_space_char(ch: string) -> int
+pub function is_space_char(ch: string) -> bool
     if len(ch) == 0 return false end
     let c = ord(ch)
     # space (32), tab (9), newline (10), carriage return (13), form feed (12), vertical tab (11)

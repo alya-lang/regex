@@ -87,7 +87,7 @@ end
 ##
 ## ### Returns
 ## `1` when the cursor has not reached the pattern end, `0` otherwise.
-pub function _p_has_more(p: ParserState) -> int
+pub function _p_has_more(p: ParserState) -> bool
     return p.pos < p.len
 end
 

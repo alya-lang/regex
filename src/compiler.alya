@@ -304,7 +304,7 @@ end
 ##
 ## ### Returns
 ## `1` when matching may start at position `0` only, `0` otherwise.
-pub function _check_is_anchored(ast, flag_m: int) -> int
+pub function _check_is_anchored(ast, flag_m: int) -> bool
     if flag_m == true return false end
     if ast is null return false end
     if ast.kind == ast_kind_anchor_start() return true end
