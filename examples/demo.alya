@@ -40,7 +40,7 @@ function main()
     let semver_reg = re::compile("^v?(\\d+)\\.(\\d+)\\.(\\d+)(?:-([a-zA-Z0-9._-]+))?$")
     let version_str = "v2.14.0-alpha.3"
     let sem_m = re::find(semver_reg, version_str)
-    if sem_m != null
+    if sem_m is not null
         let major = re::match_group(sem_m, 1)
         let minor = re::match_group(sem_m, 2)
         let patch = re::match_group(sem_m, 3)
@@ -99,7 +99,7 @@ function main()
     let log_pattern = "(?<ip>\\d+\\.\\d+\\.\\d+\\.\\d+)\\s+\\[(?<method>[A-Z]+)\\]\\s+(?<path>\\S+)"
     let log_line = "192.168.1.42 [GET] /api/v1/users"
     let log_m = re::find(re::compile(log_pattern), log_line)
-    if log_m != null
+    if log_m is not null
         let log_ip = re::get_named(log_m, "ip")
         let log_method = re::get_named(log_m, "method")
         let log_path = re::get_named(log_m, "path")

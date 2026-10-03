@@ -16,7 +16,7 @@ function main()
     # ═══════════════════════════════════════════════════════════════
     let r_date = re::compile("(?<year>\\d{{4}})-(?<month>\\d{{2}})-(?<day>\\d{{2}})")
     let m_date = re::find(r_date, "Date: 2026-09-16")
-    runner_assert_eq(r, m_date != null, true, "named groups match found")
+    runner_assert_eq(r, m_date is not null, true, "named groups match found")
     runner_assert_str_eq(r, re::get_named(m_date, "year"), "2026", "named capture: year")
     runner_assert_str_eq(r, re::get_named(m_date, "month"), "09", "named capture: month")
     runner_assert_str_eq(r, re::get_named(m_date, "day"), "16", "named capture: day")
@@ -24,7 +24,7 @@ function main()
     # Python-style named capture (?P<name>...)
     let r_py = re::compile("(?P<first>\\w+)\\s+(?P<last>\\w+)")
     let m_py = re::find(r_py, "Alan Turing")
-    runner_assert_eq(r, m_py != null, true, "python-style named capture found")
+    runner_assert_eq(r, m_py is not null, true, "python-style named capture found")
     runner_assert_str_eq(r, re::get_named(m_py, "first"), "Alan", "named capture: first")
     runner_assert_str_eq(r, re::get_named(m_py, "last"), "Turing", "named capture: last")
 
@@ -56,13 +56,13 @@ function main()
     # Positive lookahead: digits followed by px
     let r_pla = re::compile("\\d+(?=px)")
     let m_pla = re::find(r_pla, "width: 120px, height: 80em")
-    runner_assert_eq(r, m_pla != null, true, "positive lookahead (?=...) matches")
+    runner_assert_eq(r, m_pla is not null, true, "positive lookahead (?=...) matches")
     runner_assert_str_eq(r, re::match_text(m_pla), "120", "positive lookahead does not consume assertion")
 
     # Negative lookahead: digits NOT followed by px
     let r_nla = re::compile("\\d+(?!px)")
     let m_nla = re::find(r_nla, "height: 80em")
-    runner_assert_eq(r, m_nla != null, true, "negative lookahead (?!...) matches non-px")
+    runner_assert_eq(r, m_nla is not null, true, "negative lookahead (?!...) matches non-px")
     runner_assert_str_eq(r, re::match_text(m_nla), "80", "negative lookahead matched digits")
 
     # Positive lookbehind: digits preceded by $
