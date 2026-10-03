@@ -53,16 +53,16 @@ end
 ## let p = parser_state_new("^hi", "i")
 ## ```
 pub function parser_state_new(pattern: string, flags: string = "")
-    let flag_i = 0
-    let flag_m = 0
-    let flag_s = 0
+    let flag_i = false
+    let flag_m = false
+    let flag_s = false
     let flen = len(flags)
     let i = 0
     while i < flen
         let fc = char_at(flags, i)
-        if fc == "i" flag_i = 1 end
-        if fc == "m" flag_m = 1 end
-        if fc == "s" flag_s = 1 end
+        if fc == "i" flag_i = true end
+        if fc == "m" flag_m = true end
+        if fc == "s" flag_s = true end
         i += 1
     end
 
@@ -220,7 +220,7 @@ pub function _p_parse_atom(p: ParserState)
                 _p_next(p) # consume ":"
                 let inner = _p_parse_alternation(p)
                 if _p_peek(p) == ")" _p_next(p) end
-                return ast_node_new(ast_kind_group(), 0, 0, [], [inner])
+                return ast_node_new(ast_kind_group(), 0, false, [], [inner])
             end
 
             # Positive Lookahead: (?=...)
@@ -228,7 +228,7 @@ pub function _p_parse_atom(p: ParserState)
                 _p_next(p) # consume "="
                 let inner = _p_parse_alternation(p)
                 if _p_peek(p) == ")" _p_next(p) end
-                return ast_node_new(ast_kind_lookaround(), 0, 1, [], [inner])
+                return ast_node_new(ast_kind_lookaround(), 0, true, [], [inner])
             end
 
             # Negative Lookahead: (?!...)
@@ -236,7 +236,7 @@ pub function _p_parse_atom(p: ParserState)
                 _p_next(p) # consume "!"
                 let inner = _p_parse_alternation(p)
                 if _p_peek(p) == ")" _p_next(p) end
-                return ast_node_new(ast_kind_lookaround(), 0, 0, [], [inner])
+                return ast_node_new(ast_kind_lookaround(), 0, false, [], [inner])
             end
 
             # Lookbehinds: (?<=...) and (?<!...) OR Named group: (?<name>...)
@@ -247,12 +247,12 @@ pub function _p_parse_atom(p: ParserState)
                     _p_next(p) # consume "="
                     let inner = _p_parse_alternation(p)
                     if _p_peek(p) == ")" _p_next(p) end
-                    return ast_node_new(ast_kind_lookaround(), 1, 1, [], [inner])
+                    return ast_node_new(ast_kind_lookaround(), 1, true, [], [inner])
                 elif look_type == "!"
                     _p_next(p) # consume "!"
                     let inner = _p_parse_alternation(p)
                     if _p_peek(p) == ")" _p_next(p) end
-                    return ast_node_new(ast_kind_lookaround(), 1, 0, [], [inner])
+                    return ast_node_new(ast_kind_lookaround(), 1, false, [], [inner])
                 else
                     # Named capture group: (?<name>...)
                     let name = ""
@@ -266,7 +266,7 @@ pub function _p_parse_atom(p: ParserState)
                     p.group_names[str(gid)] = name
                     let inner = _p_parse_alternation(p)
                     if _p_peek(p) == ")" _p_next(p) end
-                    return ast_node_new(ast_kind_group(), gid, 1, [], [inner], name)
+                    return ast_node_new(ast_kind_group(), gid, true, [], [inner], name)
                 end
             end
 
@@ -285,7 +285,7 @@ pub function _p_parse_atom(p: ParserState)
                 p.group_names[str(gid)] = name
                 let inner = _p_parse_alternation(p)
                 if _p_peek(p) == ")" _p_next(p) end
-                return ast_node_new(ast_kind_group(), gid, 1, [], [inner], name)
+                return ast_node_new(ast_kind_group(), gid, true, [], [inner], name)
             end
         end
 
@@ -296,7 +296,7 @@ pub function _p_parse_atom(p: ParserState)
         if _p_peek(p) == ")"
             _p_next(p)
         end
-        return ast_node_new(ast_kind_group(), gid, 1, [], [inner])
+        return ast_node_new(ast_kind_group(), gid, true, [], [inner])
     end
 
     if ch == "["
@@ -314,7 +314,7 @@ pub function _p_parse_atom(p: ParserState)
 
     _p_next(p)
     let code = ord(ch)
-    if p.flag_i == 1
+    if p.flag_i == true
         if code >= 192 and code <= 223 and _p_has_more(p)
             let b2 = ord(_p_peek(p))
             let pair = to_lower_utf8_pair(code, b2)
@@ -348,22 +348,22 @@ end
 pub function _p_parse_escape(p: ParserState, esc: string)
     # Shorthand character classes
     if esc == "d"
-        return ast_node_new(ast_kind_class(), 0, 0, [[48, 57]])
+        return ast_node_new(ast_kind_class(), false, 0, [[48, 57]])
     end
     if esc == "D"
-        return ast_node_new(ast_kind_class(), 1, 0, [[48, 57]])
+        return ast_node_new(ast_kind_class(), true, 0, [[48, 57]])
     end
     if esc == "w"
-        return ast_node_new(ast_kind_class(), 0, 0, [[48, 57], [65, 90], [95, 95], [97, 122], [128, 255]])
+        return ast_node_new(ast_kind_class(), false, 0, [[48, 57], [65, 90], [95, 95], [97, 122], [128, 255]])
     end
     if esc == "W"
-        return ast_node_new(ast_kind_class(), 1, 0, [[48, 57], [65, 90], [95, 95], [97, 122], [128, 255]])
+        return ast_node_new(ast_kind_class(), true, 0, [[48, 57], [65, 90], [95, 95], [97, 122], [128, 255]])
     end
     if esc == "s"
-        return ast_node_new(ast_kind_class(), 0, 0, [[9, 13], [32, 32]])
+        return ast_node_new(ast_kind_class(), false, 0, [[9, 13], [32, 32]])
     end
     if esc == "S"
-        return ast_node_new(ast_kind_class(), 1, 0, [[9, 13], [32, 32]])
+        return ast_node_new(ast_kind_class(), true, 0, [[9, 13], [32, 32]])
     end
 
     # Word boundaries
@@ -400,7 +400,7 @@ pub function _p_parse_escape(p: ParserState, esc: string)
         let h2 = ""
         if _p_has_more(p) h2 = _p_next(p) end
         let code = hex_char_val(h1) * 16 + hex_char_val(h2)
-        if p.flag_i == 1 code = to_lower_code(code) end
+        if p.flag_i == true code = to_lower_code(code) end
         return ast_node_new(ast_kind_literal(), code)
     end
 
@@ -414,7 +414,7 @@ pub function _p_parse_escape(p: ParserState, esc: string)
         let bytes = codepoint_to_utf8(cp)
         if len(bytes) == 1
             let c = bytes[0]
-            if p.flag_i == 1 c = to_lower_code(c) end
+            if p.flag_i == true c = to_lower_code(c) end
             return ast_node_new(ast_kind_literal(), c)
         else
             let nodes = []
@@ -435,8 +435,8 @@ pub function _p_parse_escape(p: ParserState, esc: string)
             prop += _p_next(p)
         end
         if _p_peek(p) == "}" _p_next(p) end
-        let negated = 0
-        if esc == "P" negated = 1 end
+        let negated = false
+        if esc == "P" negated = true end
 
         if prop == "L" or prop == "Letter"
             return ast_node_new(ast_kind_class(), negated, 0, [[65, 90], [97, 122], [128, 255]])
@@ -452,7 +452,7 @@ pub function _p_parse_escape(p: ParserState, esc: string)
     if esc == "0" return ast_node_new(ast_kind_literal(), 0) end
 
     let c = ord(esc)
-    if p.flag_i == 1
+    if p.flag_i == true
         c = to_lower_code(c)
     end
     return ast_node_new(ast_kind_literal(), c)
@@ -471,9 +471,9 @@ end
 ## The class `AstNode` holding sorted `[lo, hi]` range pairs.
 pub function _p_parse_class(p: ParserState)
     _p_next(p) # consume "["
-    let negated = 0
+    let negated = false
     if _p_peek(p) == "^"
-        negated = 1
+        negated = true
         _p_next(p)
     end
 
@@ -526,7 +526,7 @@ pub function _p_parse_class(p: ParserState)
             code1 = ord(ch1)
         end
 
-        if p.flag_i == 1
+        if p.flag_i == true
             code1 = to_lower_code(code1)
         end
 
@@ -560,7 +560,7 @@ pub function _p_parse_class(p: ParserState)
                 code2 = ord(ch2)
             end
 
-            if p.flag_i == 1
+            if p.flag_i == true
                 code2 = to_lower_code(code2)
             end
 
@@ -601,85 +601,85 @@ pub function _p_parse_quantifier(p: ParserState, atom)
     let ch = _p_peek(p)
     let min_q = 0
     let max_q = 0
-    let has_q = 0
+    let has_q = false
 
     when ch
         is "*"
             _p_next(p)
             min_q = 0
             max_q = -1
-            has_q = 1
+            has_q = true
         is "+"
             _p_next(p)
             min_q = 1
             max_q = -1
-            has_q = 1
+            has_q = true
         is "?"
             _p_next(p)
             min_q = 0
             max_q = 1
-            has_q = 1
+            has_q = true
     end
 
-    let is_brace_q = 0
-    let is_esc_brace = 0
+    let is_brace_q = false
+    let is_esc_brace = false
     if ch == "{"
-        is_brace_q = 1
+        is_brace_q = true
     elif ch == "\\" and p.pos + 1 < p.len and char_at(p.pattern, p.pos + 1) == "{"
-        is_brace_q = 1
-        is_esc_brace = 1
+        is_brace_q = true
+        is_esc_brace = true
     end
 
-    if is_brace_q == 1
+    if is_brace_q == true
         let save_pos = p.pos
-        if is_esc_brace == 1
+        if is_esc_brace == true
             _p_next(p)
         end
         _p_next(p)
         let num1_str = ""
-        while _p_has_more(p) and is_digit(_p_peek(p)) == 1
+        while _p_has_more(p) and is_digit(_p_peek(p)) == true
             num1_str += _p_next(p)
         end
         if len(num1_str) > 0
             let n1 = int(num1_str)
-            let is_close1 = 0
+            let is_close1 = false
             if _p_peek(p) == "}"
                 _p_next(p)
-                is_close1 = 1
+                is_close1 = true
             elif _p_peek(p) == "\\" and p.pos + 1 < p.len and char_at(p.pattern, p.pos + 1) == "}"
                 _p_next(p)
                 _p_next(p)
-                is_close1 = 1
+                is_close1 = true
             end
 
-            if is_close1 == 1
+            if is_close1 == true
                 min_q = n1
                 max_q = n1
-                has_q = 1
+                has_q = true
             elif _p_peek(p) == ","
                 _p_next(p)
                 let num2_str = ""
-                while _p_has_more(p) and is_digit(_p_peek(p)) == 1
+                while _p_has_more(p) and is_digit(_p_peek(p)) == true
                     num2_str += _p_next(p)
                 end
-                let is_close2 = 0
+                let is_close2 = false
                 if _p_peek(p) == "}"
                     _p_next(p)
-                    is_close2 = 1
+                    is_close2 = true
                 elif _p_peek(p) == "\\" and p.pos + 1 < p.len and char_at(p.pattern, p.pos + 1) == "}"
                     _p_next(p)
                     _p_next(p)
-                    is_close2 = 1
+                    is_close2 = true
                 end
 
-                if is_close2 == 1
+                if is_close2 == true
                     min_q = n1
                     if len(num2_str) > 0
                         max_q = int(num2_str)
                     else
                         max_q = -1
                     end
-                    has_q = 1
+                    has_q = true
                 else
                     p.pos = save_pos
                 end
@@ -691,14 +691,14 @@ pub function _p_parse_quantifier(p: ParserState, atom)
         end
     end
 
-    if has_q == 0
+    if has_q == false
         return atom
     end
 
-    let is_lazy = 0
+    let is_lazy = false
     if _p_peek(p) == "?"
         _p_next(p)
-        is_lazy = 1
+        is_lazy = true
     end
 
     return ast_node_new(ast_kind_quantifier(), min_q, max_q, [is_lazy], [atom])

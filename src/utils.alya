@@ -24,12 +24,12 @@
 ## say is_ascii_letter("5") # 0
 ## ```
 pub function is_ascii_letter(ch: string) -> int
-    if len(ch) == 0 return 0 end
+    if len(ch) == 0 return false end
     let c = ord(ch)
     if (c >= 65 and c <= 90) or (c >= 97 and c <= 122)
-        return 1
+        return true
     end
-    return 0
+    return false
 end
 
 ## Checks whether a single character is an ASCII digit `[0-9]`.
@@ -45,12 +45,12 @@ end
 ## say is_digit("7") # 1
 ## ```
 pub function is_digit(ch: string) -> int
-    if len(ch) == 0 return 0 end
+    if len(ch) == 0 return false end
     let c = ord(ch)
     if c >= 48 and c <= 57
-        return 1
+        return true
     end
-    return 0
+    return false
 end
 
 ## Checks whether a single character is a hexadecimal digit `[0-9a-fA-F]`.
@@ -61,12 +61,12 @@ end
 ## ### Returns
 ## `1` when the character is a hex digit, `0` otherwise.
 pub function is_hex_digit(ch: string) -> int
-    if len(ch) == 0 return 0 end
+    if len(ch) == 0 return false end
     let c = ord(ch)
     if (c >= 48 and c <= 57) or (c >= 65 and c <= 70) or (c >= 97 and c <= 102)
-        return 1
+        return true
     end
-    return 0
+    return false
 end
 
 ## Returns the numeric integer value of a hexadecimal character.
@@ -137,16 +137,16 @@ end
 ## ### Returns
 ## `1` when the character is a word character, `0` otherwise.
 pub function is_word_char(ch: string) -> int
-    if len(ch) == 0 return 0 end
+    if len(ch) == 0 return false end
     let c = ord(ch)
     if (c >= 48 and c <= 57) or (c >= 65 and c <= 90) or (c >= 97 and c <= 122) or c == 95
-        return 1
+        return true
     end
     # Include common Latin/Turkish single-byte or lead bytes
     if c >= 192 and c <= 255
-        return 1
+        return true
     end
-    return 0
+    return false
 end
 
 ## Checks whether a character is a whitespace character `[\s]`.
@@ -159,13 +159,13 @@ end
 ## ### Returns
 ## `1` when the character is whitespace, `0` otherwise.
 pub function is_space_char(ch: string) -> int
-    if len(ch) == 0 return 0 end
+    if len(ch) == 0 return false end
     let c = ord(ch)
     # space (32), tab (9), newline (10), carriage return (13), form feed (12), vertical tab (11)
     if c == 32 or c == 9 or c == 10 or c == 13 or c == 11 or c == 12
-        return 1
+        return true
     end
-    return 0
+    return false
 end
 
 # ───────────────────────────────────────────────────────────────
@@ -341,8 +341,8 @@ end
 ## ### Returns
 ## `1` when the assertion holds at `pos`, `0` otherwise.
 pub function check_word_boundary(text: string, pos: int, text_len: int, is_positive: int) -> int
-    let before_word = 0
-    let after_word = 0
+    let before_word = false
+    let after_word = false
     if pos > 0
         before_word = is_word_char(char_at(text, pos - 1))
     end
@@ -350,15 +350,15 @@ pub function check_word_boundary(text: string, pos: int, text_len: int, is_posit
         after_word = is_word_char(char_at(text, pos))
     end
 
-    let is_bound = 0
+    let is_bound = false
     if before_word != after_word
-        is_bound = 1
+        is_bound = true
     end
 
     return when
-        is_positive == 1 => is_bound
-        is_bound == 1    => 0
-        else             => 1
+        is_positive == true => is_bound
+        is_bound == true    => false
+        else                => true
     end
 end
 

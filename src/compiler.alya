@@ -37,7 +37,7 @@ end
 ##
 ## ### Returns
 ## A newly initialized `CompilerState` instance.
-pub function compiler_state_new(flag_i: int = 0, flag_m: int = 0, flag_s: int = 0)
+pub function compiler_state_new(flag_i: int = false, flag_m: int = false, flag_s: int = false)
     return CompilerState {
         instructions: [],
         flag_i: flag_i,
@@ -115,7 +115,7 @@ pub function _c_compile_node(c: CompilerState, node) -> int
 
     if kind == ast_kind_literal()
         let code = node.val1
-        if c.flag_i == 1
+        if c.flag_i == true
             _c_emit(c, inst_new(op_char_ci(), to_lower_code(code)))
         else
             _c_emit(c, inst_new(op_char(), code))
@@ -189,7 +189,7 @@ pub function _c_compile_node(c: CompilerState, node) -> int
         let gid = node.val1
         let is_cap = node.val2
         let inner = node.children[0]
-        if is_cap == 1
+        if is_cap == true
             _c_emit(c, inst_new(op_save(), gid * 2))
             _c_compile_node(c, inner)
             _c_emit(c, inst_new(op_save(), gid * 2 + 1))
@@ -236,7 +236,7 @@ pub function _c_compile_node(c: CompilerState, node) -> int
     if kind == ast_kind_quantifier()
         let min_q = node.val1
         let max_q = node.val2
-        let is_lazy = 0
+        let is_lazy = false
         if len(node.node_data) > 0
             is_lazy = node.node_data[0]
         end
@@ -258,7 +258,7 @@ pub function _c_compile_node(c: CompilerState, node) -> int
             _c_emit(c, inst_new(op_jump(), l1))
             let l3 = _c_pc(c)
 
-            if is_lazy == 1
+            if is_lazy == true
                 _c_patch_arg1(c, split_pc, l3)
                 _c_patch_arg2(c, split_pc, l2)
             else
@@ -274,7 +274,7 @@ pub function _c_compile_node(c: CompilerState, node) -> int
                 _c_compile_node(c, inner)
                 let skip_pc = _c_pc(c)
 
-                if is_lazy == 1
+                if is_lazy == true
                     _c_patch_arg1(c, split_pc, skip_pc)
                     _c_patch_arg2(c, split_pc, inner_pc)
                 else
@@ -305,15 +305,15 @@ end
 ## ### Returns
 ## `1` when matching may start at position `0` only, `0` otherwise.
 pub function _check_is_anchored(ast, flag_m: int) -> int
-    if flag_m == 1 return 0 end
-    if ast is null return 0 end
-    if ast.kind == ast_kind_anchor_start() return 1 end
+    if flag_m == true return false end
+    if ast is null return false end
+    if ast.kind == ast_kind_anchor_start() return true end
     if ast.kind == ast_kind_concat() and len(ast.children) > 0
         if ast.children[0].kind == ast_kind_anchor_start()
-            return 1
+            return true
         end
     end
-    return 0
+    return false
 end
 
 ## Extracts a literal prefix for the fast-scan optimization.
@@ -346,7 +346,7 @@ pub function _extract_literal_prefix(ast, flag_i: int) -> string
         let n = nodes[i]
         if n.kind == ast_kind_literal()
             let c = n.val1
-            if flag_i == 1 c = to_lower_code(c) end
+            if flag_i == true c = to_lower_code(c) end
             prefix += chr(c)
         else
             break
@@ -395,8 +395,8 @@ pub function compile_regex(pattern: string, flags: string = "") -> Regex
 
     let is_anchored = _check_is_anchored(ast, flag_m)
     let prefix = ""
-    if flag_i == 0
-        prefix = _extract_literal_prefix(ast, 0)
+    if flag_i == false
+        prefix = _extract_literal_prefix(ast, false)
     end
 
     return regex_new(pattern, flags, c.instructions, group_count, is_anchored, prefix, flag_i, flag_m, flag_s, named_groups, group_names)

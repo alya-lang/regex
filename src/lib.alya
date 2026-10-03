@@ -68,11 +68,11 @@ end
 ## say is_match(re, "say hello") # 1
 ## ```
 pub function is_match(reg, text: string) -> int
-    if reg is null return 0 end
+    if reg is null return false end
     let m = vm_search(reg, text, 0)
     return when
-        m is not null => 1
-        else          => 0
+        m is not null => true
+        else          => false
     end
 end
 
@@ -128,7 +128,7 @@ end
 pub function replace(reg, text: string, replacement: string) -> string
     return when
         reg is null => text
-        else        => vm_replace(reg, text, replacement, 0)
+        else        => vm_replace(reg, text, replacement, false)
     end
 end
 
@@ -144,7 +144,7 @@ end
 pub function replace_all(reg, text: string, replacement: string) -> string
     return when
         reg is null => text
-        else        => vm_replace(reg, text, replacement, 1)
+        else        => vm_replace(reg, text, replacement, true)
     end
 end
 

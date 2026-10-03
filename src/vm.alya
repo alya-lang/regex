@@ -83,7 +83,7 @@ pub function _vm_step(code: array, pc: int, text: string, pos: int, text_len: in
     if op == op_any()
         if pos >= text_len return null end
         let ch = char_at(text, pos)
-        if inst.arg1 == 1 or ch != "\n"
+        if inst.arg1 == true or ch != "\n"
             return _vm_step(code, pc + 1, text, pos + 1, text_len, slots, flag_i, flag_m, flag_s, counter)
         end
         return null
@@ -92,31 +92,31 @@ pub function _vm_step(code: array, pc: int, text: string, pos: int, text_len: in
     if op == op_class()
         if pos >= text_len return null end
         let code_val = ord(char_at(text, pos))
-        if flag_i == 1
+        if flag_i == true
             code_val = to_lower_code(code_val)
         end
         let ranges = inst.inst_sub
-        let matched = 0
+        let matched = false
         let ri = 0
         let rcnt = len(ranges)
         while ri < rcnt
             let r = ranges[ri]
             if code_val >= r[0] and code_val <= r[1]
-                matched = 1
+                matched = true
                 break
             end
             ri += 1
         end
 
-        if inst.arg1 == 1
-            if matched == 1
-                matched = 0
+        if inst.arg1 == true
+            if matched == true
+                matched = false
             else
-                matched = 1
+                matched = true
             end
         end
 
-        if matched == 1
+        if matched == true
             return _vm_step(code, pc + 1, text, pos + 1, text_len, slots, flag_i, flag_m, flag_s, counter)
         end
         return null
@@ -134,7 +134,7 @@ pub function _vm_step(code: array, pc: int, text: string, pos: int, text_len: in
             return null
         end
         if ref_len > 0
-            if flag_i == 1
+            if flag_i == true
                 let s1 = to_lower_string(substring(text, pos, ref_len))
                 let s2 = to_lower_string(substring(text, gs, ref_len))
                 if s1 != s2 return null end
@@ -151,7 +151,7 @@ pub function _vm_step(code: array, pc: int, text: string, pos: int, text_len: in
         let is_positive = inst.arg1
         let sub_slots = [pos, -1]
         let sub_res = _vm_step(inst.inst_sub, 0, text, pos, text_len, sub_slots, flag_i, flag_m, flag_s, [0])
-        if is_positive == 1
+        if is_positive == true
             if sub_res is null return null end
         else
             if sub_res is not null return null end
@@ -161,23 +161,23 @@ pub function _vm_step(code: array, pc: int, text: string, pos: int, text_len: in
 
     if op == op_lookbehind()
         let is_positive = inst.arg1
-        let matched = 0
+        let matched = false
         let test_start = 0
         while test_start <= pos
             let sub_slots = [test_start, -1]
             let sub_res = _vm_step(inst.inst_sub, 0, text, test_start, text_len, sub_slots, flag_i, flag_m, flag_s, [0])
             if sub_res is not null
                 if sub_res[1] == pos
-                    matched = 1
+                    matched = true
                     break
                 end
             end
             test_start += 1
         end
-        if is_positive == 1
-            if matched == 0 return null end
+        if is_positive == true
+            if matched == false return null end
         else
-            if matched == 1 return null end
+            if matched == true return null end
         end
         return _vm_step(code, pc + 1, text, pos, text_len, slots, flag_i, flag_m, flag_s, counter)
     end
@@ -218,40 +218,40 @@ pub function _vm_step(code: array, pc: int, text: string, pos: int, text_len: in
     end
 
     if op == op_assert_start()
-        let ok = 0
+        let ok = false
         if pos == 0
-            ok = 1
-        elif inst.arg1 == 1 and pos > 0 and char_at(text, pos - 1) == "\n"
-            ok = 1
+            ok = true
+        elif inst.arg1 == true and pos > 0 and char_at(text, pos - 1) == "\n"
+            ok = true
         end
-        if ok == 1
+        if ok == true
             return _vm_step(code, pc + 1, text, pos, text_len, slots, flag_i, flag_m, flag_s, counter)
         end
         return null
     end
 
     if op == op_assert_end()
-        let ok = 0
+        let ok = false
         if pos == text_len
-            ok = 1
-        elif inst.arg1 == 1 and pos < text_len and char_at(text, pos) == "\n"
-            ok = 1
+            ok = true
+        elif inst.arg1 == true and pos < text_len and char_at(text, pos) == "\n"
+            ok = true
         end
-        if ok == 1
+        if ok == true
             return _vm_step(code, pc + 1, text, pos, text_len, slots, flag_i, flag_m, flag_s, counter)
         end
         return null
     end
 
     if op == op_assert_word()
-        if check_word_boundary(text, pos, text_len, 1) == 1
+        if check_word_boundary(text, pos, text_len, true) == true
             return _vm_step(code, pc + 1, text, pos, text_len, slots, flag_i, flag_m, flag_s, counter)
         end
         return null
     end
 
     if op == op_assert_not_word()
-        if check_word_boundary(text, pos, text_len, 0) == 1
+        if check_word_boundary(text, pos, text_len, false) == true
             return _vm_step(code, pc + 1, text, pos, text_len, slots, flag_i, flag_m, flag_s, counter)
         end
         return null
@@ -338,7 +338,7 @@ pub function vm_search(reg, text: string, start_index: int = 0)
         return null
     end
 
-    if reg.is_anchored == 1
+    if reg.is_anchored == true
         if start_index > 0
             return null
         end
@@ -354,7 +354,7 @@ pub function vm_search(reg, text: string, start_index: int = 0)
             if pos + plen > text_len
                 return null
             end
-            if reg.flag_i == 1
+            if reg.flag_i == true
                 let sub = to_lower_string(substring(text, pos, plen))
                 if sub != prefix
                     pos += 1
@@ -482,9 +482,9 @@ end
 ##
 ## ### Returns
 ## The resulting string with replacements applied.
-pub function vm_replace(reg, text: string, replacement: string, is_all: int = 1) -> string
+pub function vm_replace(reg, text: string, replacement: string, is_all: int = true) -> string
     let matches = []
-    if is_all == 1
+    if is_all == true
         matches = vm_find_all(reg, text)
     else
         let first_m = vm_search(reg, text, 0)

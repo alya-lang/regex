@@ -412,7 +412,7 @@ pub function match_named(m, name: string) -> string
     if m is null return "" end
     let named = m.m_named_groups
     if named is not null
-        if has(named, name) == 1
+        if has(named, name) == true
             let g_idx = named[name]
             return match_group(m, g_idx)
         end
