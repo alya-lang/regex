@@ -68,13 +68,13 @@ function main()
     # Positive lookbehind: digits preceded by $
     let r_plb = re::compile("(?<=\\$)\\d+")
     let m_plb = re::find(r_plb, "price: $49 and €99")
-    runner_assert_eq(r, m_plb != null, true, "positive lookbehind (?<=...) matches")
+    runner_assert_eq(r, m_plb is not null, true, "positive lookbehind (?<=...) matches")
     runner_assert_str_eq(r, re::match_text(m_plb), "49", "positive lookbehind matched price after $")
 
     # Negative lookbehind: digits NOT preceded by $
     let r_nlb = re::compile("(?<!\\$)\\b\\d+\\b")
     let m_nlb = re::find(r_nlb, "$49 and 99")
-    runner_assert_eq(r, m_nlb != null, true, "negative lookbehind (?<!...) matches")
+    runner_assert_eq(r, m_nlb is not null, true, "negative lookbehind (?<!...) matches")
     runner_assert_str_eq(r, re::match_text(m_nlb), "99", "negative lookbehind skips $49 and matches 99")
 
     # ═══════════════════════════════════════════════════════════════
@@ -88,7 +88,7 @@ function main()
     # Matching quotes with backreference
     let r_quote = re::compile("([\"'])(.*?)\\1")
     let m_quote = re::find(r_quote, "say 'hello world' inside")
-    runner_assert_eq(r, m_quote != null, true, "backreference matching quotes")
+    runner_assert_eq(r, m_quote is not null, true, "backreference matching quotes")
     runner_assert_str_eq(r, re::match_text(m_quote), "'hello world'", "matched single-quoted string")
     runner_assert_str_eq(r, re::match_group(m_quote, 2), "hello world", "inner text captured")
 
