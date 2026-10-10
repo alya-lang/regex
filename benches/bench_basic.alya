@@ -7,7 +7,7 @@ import "../src/lib.alya" as re
 @cfg(feature = "core")
 function bench_core(runner)
     # 1. Regex Compilation Benchmark
-    let email_pattern = "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{{2,}}$"
+    let email_pattern = f"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{{2,}}$"
     bench_start(runner, 10000)
     let c = 0
     while c < 10000
@@ -28,7 +28,7 @@ function bench_core(runner)
     bench_stop(runner, "is_match (compiled email pattern)")
 
     # 3. Capturing Groups Benchmark
-    let date_reg = re::compile("(\\d{{4}})-(\\d{{2}})-(\\d{{2}})")
+    let date_reg = re::compile(f"(\\d{{4}})-(\\d{{2}})-(\\d{{2}})")
     let date_str = "Event log date: 2026-09-16 recorded"
     bench_start(runner, 50000)
     let g = 0
@@ -57,7 +57,7 @@ end
 @cfg(feature = "replace")
 function bench_replace(runner)
     # 5. replace_all Benchmark
-    let phone_reg = re::compile("\\b\\d{{3}}-\\d{{3}}-(\\d{{4}})\\b")
+    let phone_reg = re::compile(f"\\b\\d{{3}}-\\d{{3}}-(\\d{{4}})\\b")
     let phone_str = "Call 555-123-4567 or 555-987-6543 today"
     bench_start(runner, 20000)
     let rep = 0

@@ -18,13 +18,13 @@ function demo_core()
         let major = re::match_group(sem_m, 1)
         let minor = re::match_group(sem_m, 2)
         let patch = re::match_group(sem_m, 3)
-        say "  Input:       {version_str}"
-        say "  Major:       {major}"
-        say "  Minor:       {minor}"
-        say "  Patch:       {patch}"
+        say f"  Input:       {version_str}"
+        say f"  Major:       {major}"
+        say f"  Minor:       {minor}"
+        say f"  Patch:       {patch}"
         let prerelease = re::match_group(sem_m, 4)
         if len(prerelease) > 0
-            say "  Pre-release: {prerelease}"
+            say f"  Pre-release: {prerelease}"
         end
     end
     say ""
@@ -35,13 +35,13 @@ function demo_core()
     let link_reg = re::compile("\\[([^\\]]+)\\]\\((https?://[^\\)]+)\\)")
     let links = re::find_all(link_reg, markdown)
     let link_count = len(links)
-    say "  Found {link_count} links:"
+    say f"  Found {link_count} links:"
     let k = 0
     while k < len(links)
         let link_m = links[k]
         let link_label = re::match_group(link_m, 1)
         let link_url = re::match_group(link_m, 2)
-        say "    • Label: '{link_label}' => URL: {link_url}"
+        say f"    • Label: '{link_label}' => URL: {link_url}"
         k += 1
     end
     say ""
@@ -55,10 +55,10 @@ function demo_core()
         let log_ip = re::get_named(log_m, "ip")
         let log_method = re::get_named(log_m, "method")
         let log_path = re::get_named(log_m, "path")
-        say "  Log entry: {log_line}"
-        say "  IP:        {log_ip}"
-        say "  Method:    {log_method}"
-        say "  Path:      {log_path}"
+        say f"  Log entry: {log_line}"
+        say f"  IP:        {log_ip}"
+        say f"  Method:    {log_method}"
+        say f"  Path:      {log_path}"
     end
     say ""
 
@@ -72,7 +72,7 @@ function demo_core()
     while pi < len(px_matches)
         let px_text = re::match_text(px_matches[pi])
         let px_start = re::match_start(px_matches[pi])
-        say "    • {px_text} (start={px_start})"
+        say f"    • {px_text} (start={px_start})"
         pi += 1
     end
     say ""
@@ -87,7 +87,7 @@ function demo_core()
     while ti < len(tag_matches)
         let tag_text = re::match_text(tag_matches[ti])
         let tag_name = re::get_named(tag_matches[ti], "tag")
-        say "    • {tag_text} => Tag: <{tag_name}>"
+        say f"    • {tag_text} => Tag: <{tag_name}>"
         ti += 1
     end
     say ""
@@ -104,7 +104,7 @@ function demo_replace()
     let log_pattern = "(?<ip>\\d+\\.\\d+\\.\\d+\\.\\d+)\\s+\\[(?<method>[A-Z]+)\\]\\s+(?<path>\\S+)"
     let log_line = "192.168.1.42 [GET] /api/v1/users"
     let reformatted = re::replace(re::compile(log_pattern), log_line, "$<method> request from $<ip> to $<path>")
-    say "  Reformat:  {reformatted}"
+    say f"  Reformat:  {reformatted}"
     say ""
 end
 
@@ -116,7 +116,7 @@ end
 function demo_oneliners()
     # 1. Email validation
     say "[1] Email Address Validation:"
-    let email_pattern = "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{{2,}}$"
+    let email_pattern = f"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{{2,}}$"
     let test_emails = [
         "user.name@example.com",
         "dev+alya@company.org",
@@ -128,9 +128,9 @@ function demo_oneliners()
         let em = test_emails[i]
         let valid = re::test(email_pattern, em)
         if valid == true
-            say "  [VALID]   {em}"
+            say f"  [VALID]   {em}"
         else
-            say "  [INVALID] {em}"
+            say f"  [INVALID] {em}"
         end
         i += 1
     end
@@ -139,10 +139,10 @@ function demo_oneliners()
     # 3. Data Masking (PII protection)
     say "[3] Sensitive Information Masking (replace_all):"
     let raw_text = "Call Alice at 555-123-4567 or Bob at 555-987-6543 for details."
-    let phone_pattern = "\\b\\d{{3}}-\\d{{3}}-(\\d{{4}})\\b"
+    let phone_pattern = f"\\b\\d{{3}}-\\d{{3}}-(\\d{{4}})\\b"
     let masked = re::replace_all_pattern(phone_pattern, raw_text, "***-***-$1")
-    say "  Original: {raw_text}"
-    say "  Masked:   {masked}"
+    say f"  Original: {raw_text}"
+    say f"  Masked:   {masked}"
     say ""
 
     # 5. Robust Token Splitting
@@ -150,12 +150,12 @@ function demo_oneliners()
     let csv_like = "item1;  item2,   item3 \t item4;item5"
     let items = re::split_pattern("[,;\\s]+", csv_like)
     let item_count = len(items)
-    say "  Input: '{csv_like}'"
-    say "  Tokens ({item_count} items):"
+    say f"  Input: '{csv_like}'"
+    say f"  Tokens ({item_count} items):"
     let t = 0
     while t < len(items)
         let tok = items[t]
-        say "    [{t}] => '{tok}'"
+        say f"    [{t}] => '{tok}'"
         t += 1
     end
 end
@@ -168,18 +168,18 @@ end
 function demo_unicode()
     # 9. Unicode Property Classes & Turkish Case-Folding
     say "[9] Unicode Properties & Turkish Case-Folding:"
-    let tr_reg = re::compile("^\\p{{L}}+$")
+    let tr_reg = re::compile(f"^\\p{{L}}+$")
     let words = ["Alya", "türkçe", "İstanbul", "12345"]
     let wi = 0
     while wi < len(words)
         let w = words[wi]
         let hit = re::is_match(tr_reg, w)
-        say "  \\p{{L}} test on '{w}': {hit}"
+        say f"  \\p{{L}} test on '{w}': {hit}"
         wi += 1
     end
     let ci_reg = re::compile("öğrenci", "i")
     let ci_hit = re::is_match(ci_reg, "ÖĞRENCİ")
-    say "  Case-insensitive Turkish 'öğrenci' matches 'ÖĞRENCİ': {ci_hit}"
+    say f"  Case-insensitive Turkish 'öğrenci' matches 'ÖĞRENCİ': {ci_hit}"
     say ""
 end
 

@@ -58,8 +58,8 @@ function test_core(r)
     runner_assert_eq(r, re::is_match(r_plus, "b"), false, "+ requires at least one occurrence")
     runner_assert_eq(r, re::is_match(r_plus, "ba"), true, "+ matches one occurrence")
 
-    let r_range = re::compile("^\\d{{3}}-\\d{{4}}$")
-    runner_assert_eq(r, re::is_match(r_range, "555-1234"), true, "matches exact repeat bounds {3} and {4}")
+    let r_range = re::compile(f"^\\d{{3}}-\\d{{4}}$")
+    runner_assert_eq(r, re::is_match(r_range, "555-1234"), true, f"matches exact repeat bounds {3} and {4}")
     runner_assert_eq(r, re::is_match(r_range, "55-1234"), false, "rejects too few digits in repeat bound")
 
     # 8. Alternation (cat|dog|bird)
@@ -70,7 +70,7 @@ function test_core(r)
     runner_assert_eq(r, re::is_match(r_alt, "I have a fish"), false, "rejects non-matching alternation")
 
     # 9. Capturing groups and Match inspection
-    let r_date = re::compile("(\\d{{4}})-(\\d{{2}})-(\\d{{2}})")
+    let r_date = re::compile(f"(\\d{{4}})-(\\d{{2}})-(\\d{{2}})")
     let m_date = re::find(r_date, "Today is 2026-09-16 on the calendar")
     runner_assert_eq(r, m_date is not null, true, "find locates match with groups")
     runner_assert_str_eq(r, re::match_text(m_date), "2026-09-16", "group 0 is full match")

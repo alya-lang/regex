@@ -12,7 +12,7 @@ function test_adv_core(r)
     # ═══════════════════════════════════════════════════════════════
     # 1. Named Capture Groups
     # ═══════════════════════════════════════════════════════════════
-    let r_date = re::compile("(?<year>\\d{{4}})-(?<month>\\d{{2}})-(?<day>\\d{{2}})")
+    let r_date = re::compile(f"(?<year>\\d{{4}})-(?<month>\\d{{2}})-(?<day>\\d{{2}})")
     let m_date = re::find(r_date, "Date: 2026-09-16")
     runner_assert_eq(r, m_date is not null, true, "named groups match found")
     runner_assert_str_eq(r, re::get_named(m_date, "year"), "2026", "named capture: year")
@@ -95,8 +95,8 @@ end
 @cfg(feature = "replace")
 function test_adv_replace(r)
     # Named replacement with ${name} and $<name> templates
-    let r_date = re::compile("(?<year>\\d{{4}})-(?<month>\\d{{2}})-(?<day>\\d{{2}})")
-    let rep_named = re::replace(r_date, "Date: 2026-09-16", "${{day}}/${{month}}/${{year}}")
+    let r_date = re::compile(f"(?<year>\\d{{4}})-(?<month>\\d{{2}})-(?<day>\\d{{2}})")
+    let rep_named = re::replace(r_date, "Date: 2026-09-16", f"${{day}}/${{month}}/${{year}}")
     runner_assert_str_eq(r, rep_named, "Date: 16/09/2026", "named replacement with dollar-brace syntax")
 
     let r_py = re::compile("(?P<first>\\w+)\\s+(?P<last>\\w+)")
@@ -114,14 +114,14 @@ function test_adv_unicode(r)
     # 5. Unicode Property Classes & Turkish Case-Folding
     # ═══════════════════════════════════════════════════════════════
     # \p{L} matches letters (ASCII + Turkish/Extended Latin)
-    let r_prop_l = re::compile("^\\p{{L}}+$")
+    let r_prop_l = re::compile(f"^\\p{{L}}+$")
     runner_assert_eq(r, re::is_match(r_prop_l, "Alya"), true, "pL matches ASCII word")
     runner_assert_eq(r, re::is_match(r_prop_l, "türkçe"), true, "pL matches Turkish word 'türkçe'")
     runner_assert_eq(r, re::is_match(r_prop_l, "İstanbul"), true, "pL matches Turkish 'İstanbul'")
     runner_assert_eq(r, re::is_match(r_prop_l, "123"), false, "pL rejects digits")
 
     # \p{N} matches numbers
-    let r_prop_n = re::compile("^\\p{{N}}+$")
+    let r_prop_n = re::compile(f"^\\p{{N}}+$")
     runner_assert_eq(r, re::is_match(r_prop_n, "123456"), true, "pN matches digits")
     runner_assert_eq(r, re::is_match(r_prop_n, "123a45"), false, "pN rejects letters")
 
