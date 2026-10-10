@@ -4,9 +4,8 @@
 import "std/bench"
 import "../src/lib.alya" as re
 
-function main()
-    let runner = bench_runner("alya-lang/regex High Performance Micro-Benchmarks")
-
+@cfg(feature = "core")
+function bench_core(runner)
     # 1. Regex Compilation Benchmark
     let email_pattern = "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{{2,}}$"
     bench_start(runner, 10000)
@@ -49,7 +48,14 @@ function main()
         fa += 1
     end
     bench_stop(runner, "find_all (6 digit matches)")
+end
 
+@cfg(not(feature = "core"))
+function bench_core(runner)
+end
+
+@cfg(feature = "replace")
+function bench_replace(runner)
     # 5. replace_all Benchmark
     let phone_reg = re::compile("\\b\\d{{3}}-\\d{{3}}-(\\d{{4}})\\b")
     let phone_str = "Call 555-123-4567 or 555-987-6543 today"
@@ -60,7 +66,14 @@ function main()
         rep += 1
     end
     bench_stop(runner, "replace_all (phone masking with $1)")
+end
 
+@cfg(not(feature = "replace"))
+function bench_replace(runner)
+end
+
+@cfg(feature = "split")
+function bench_split(runner)
     # 6. split Benchmark
     let split_reg = re::compile("[,;\\s]+")
     let split_str = "apple, orange; banana  grape  mango;peach"
@@ -71,6 +84,54 @@ function main()
         sp += 1
     end
     bench_stop(runner, "split (multi-delimiter regex)")
+end
+
+@cfg(not(feature = "split"))
+function bench_split(runner)
+end
+
+@cfg(feature = "oneliners")
+function bench_oneliners(runner)
+    # 7. One-liner test Benchmark (compile + match per call)
+    bench_start(runner, 10000)
+    let o = 0
+    while o < 10000
+        re::test("^\\d+$", "123456")
+        o += 1
+    end
+    bench_stop(runner, "test one-liner (digits)")
+end
+
+@cfg(not(feature = "oneliners"))
+function bench_oneliners(runner)
+end
+
+@cfg(feature = "unicode")
+function bench_unicode(runner)
+    # 8. Multilingual case-folding Benchmark
+    let tr_reg = re::compile("öğrenci", "i")
+    let tr_str = "ÖĞRENCİ listesi"
+    bench_start(runner, 20000)
+    let u = 0
+    while u < 20000
+        re::is_match(tr_reg, tr_str)
+        u += 1
+    end
+    bench_stop(runner, "is_match (Turkish case-folding)")
+end
+
+@cfg(not(feature = "unicode"))
+function bench_unicode(runner)
+end
+
+function main()
+    let runner = bench_runner("alya-lang/regex High Performance Micro-Benchmarks")
+
+    bench_core(runner)
+    bench_replace(runner)
+    bench_split(runner)
+    bench_oneliners(runner)
+    bench_unicode(runner)
 
     bench_summary(runner)
 end

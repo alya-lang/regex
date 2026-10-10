@@ -3,10 +3,8 @@
 import "std/test"
 import "../src/lib.alya" as re
 
-function main()
-    test_suite("regex Package Test Suite")
-    let r = runner_new()
-
+@cfg(feature = "core")
+function test_core(r)
     # 1. Literals and basic matching
     let r1 = re::compile("hello")
     runner_assert_eq(r, re::is_match(r1, "say hello to the world"), true, "matches literal substring")
@@ -89,7 +87,14 @@ function main()
     runner_assert_str_eq(r, re::match_text(all_m[0]), "12", "first find_all match")
     runner_assert_str_eq(r, re::match_text(all_m[1]), "34", "second find_all match")
     runner_assert_str_eq(r, re::match_text(all_m[2]), "56", "third find_all match")
+end
 
+@cfg(not(feature = "core"))
+function test_core(r)
+end
+
+@cfg(feature = "replace")
+function test_replace(r)
     # 11. replace and replace_all
     let r_word_fox = re::compile("fox")
     let rep1 = re::replace(r_word_fox, "the brown fox jumps over the other fox", "wolf")
@@ -102,7 +107,14 @@ function main()
     let r_name = re::compile("(\\w+)\\s+(\\w+)")
     let reordered = re::replace(r_name, "John Doe", "$2, $1")
     runner_assert_str_eq(r, reordered, "Doe, John", "replace with group placeholders $1, $2")
+end
 
+@cfg(not(feature = "replace"))
+function test_replace(r)
+end
+
+@cfg(feature = "split")
+function test_split(r)
     # 12. split
     let r_split = re::compile("[,;\\s]+")
     let tokens = re::split(r_split, "alpha, beta;  gamma   delta")
@@ -111,7 +123,14 @@ function main()
     runner_assert_str_eq(r, tokens[1], "beta", "split segment 1")
     runner_assert_str_eq(r, tokens[2], "gamma", "split segment 2")
     runner_assert_str_eq(r, tokens[3], "delta", "split segment 3")
+end
 
+@cfg(not(feature = "split"))
+function test_split(r)
+end
+
+@cfg(feature = "oneliners")
+function test_oneliners(r)
     # 13. escape
     let escaped = re::escape("file.name*?(1).txt")
     runner_assert_str_eq(r, escaped, "file\\.name\\*\\?\\(1\\)\\.txt", "escape escapes all regex metacharacters")
@@ -120,6 +139,20 @@ function main()
     # 14. One-liner convenience API
     runner_assert_eq(r, re::test("^\\d+$", "123456"), true, "re::test succeeds for digits")
     runner_assert_eq(r, re::test("^\\d+$", "123a56"), false, "re::test fails on non-digits")
+end
+
+@cfg(not(feature = "oneliners"))
+function test_oneliners(r)
+end
+
+function main()
+    test_suite("regex Package Test Suite")
+    let r = runner_new()
+
+    test_core(r)
+    test_replace(r)
+    test_split(r)
+    test_oneliners(r)
 
     let failed = runner_summary(r)
     if failed > 0

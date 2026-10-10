@@ -29,6 +29,9 @@ import "./vm.alya"
 ## let re = compile("^hi", "i")
 ## say is_match(re, "HI there") # 1
 ## ```
+##
+## Requires the `core` feature (default-on).
+@cfg(feature = "core")
 pub function compile(pattern: string, flags: string = "") -> Regex
     return compile_regex(pattern, flags)
 end
@@ -46,6 +49,9 @@ end
 ## ```alya
 ## let re = regex("\\d+")
 ## ```
+##
+## Requires the `core` feature (default-on).
+@cfg(feature = "core")
 pub function regex(pattern: string, flags: string = "") -> Regex
     return compile_regex(pattern, flags)
 end
@@ -67,6 +73,9 @@ end
 ## ```alya
 ## say is_match(re, "say hello") # 1
 ## ```
+##
+## Requires the `core` feature (default-on).
+@cfg(feature = "core")
 pub function is_match(reg, text: string) -> int
     if reg is null return false end
     let m = vm_search(reg, text, 0)
@@ -89,6 +98,9 @@ end
 ## ```alya
 ## let m = find(re, "Today is 2026-09-16")
 ## ```
+##
+## Requires the `core` feature (default-on).
+@cfg(feature = "core")
 pub function find(reg, text: string)
     return when
         reg is null => null
@@ -104,6 +116,9 @@ end
 ##
 ## ### Returns
 ## Array of `Match` instances (possibly empty).
+##
+## Requires the `core` feature (default-on).
+@cfg(feature = "core")
 pub function find_all(reg, text: string) -> array
     return when
         reg is null => []
@@ -125,6 +140,9 @@ end
 ## ```alya
 ## say replace(re, "John Doe", "$1") # "John"
 ## ```
+##
+## Requires the `replace` feature (default-on).
+@cfg(feature = "replace")
 pub function replace(reg, text: string, replacement: string) -> string
     return when
         reg is null => text
@@ -141,6 +159,9 @@ end
 ##
 ## ### Returns
 ## The resulting string with all matches replaced.
+##
+## Requires the `replace` feature (default-on).
+@cfg(feature = "replace")
 pub function replace_all(reg, text: string, replacement: string) -> string
     return when
         reg is null => text
@@ -162,6 +183,9 @@ end
 ## ```alya
 ## say split(re, "alpha, beta") # ["alpha", " beta"]
 ## ```
+##
+## Requires the `split` feature (default-on).
+@cfg(feature = "split")
 pub function split(reg, text: string, limit: int = -1) -> array
     return when
         reg is null => [text]
@@ -187,6 +211,9 @@ end
 ## ```alya
 ## say test("^\\d+$", "123456") # 1
 ## ```
+##
+## Requires the `oneliners` feature (default-on).
+@cfg(feature = "oneliners")
 pub function test(pattern: string, text: string, flags: string = "") -> int
     let reg = compile_regex(pattern, flags)
     return is_match(reg, text)
@@ -201,6 +228,9 @@ end
 ##
 ## ### Returns
 ## The first `Match` instance, or null when nothing matches.
+##
+## Requires the `oneliners` feature (default-on).
+@cfg(feature = "oneliners")
 pub function find_pattern(pattern: string, text: string, flags: string = "")
     let reg = compile_regex(pattern, flags)
     return find(reg, text)
@@ -215,6 +245,9 @@ end
 ##
 ## ### Returns
 ## The first `Match` instance, or null when nothing matches.
+##
+## Requires the `oneliners` feature (default-on).
+@cfg(feature = "oneliners")
 pub function match_pattern(pattern: string, text: string, flags: string = "")
     return find_pattern(pattern, text, flags)
 end
@@ -228,6 +261,9 @@ end
 ##
 ## ### Returns
 ## Array of `Match` instances (possibly empty).
+##
+## Requires the `oneliners` feature (default-on).
+@cfg(feature = "oneliners")
 pub function find_all_pattern(pattern: string, text: string, flags: string = "") -> array
     let reg = compile_regex(pattern, flags)
     return find_all(reg, text)
@@ -243,6 +279,9 @@ end
 ##
 ## ### Returns
 ## The resulting string with the first occurrence replaced.
+##
+## Requires the `oneliners` feature (default-on).
+@cfg(feature = "oneliners")
 pub function replace_pattern(pattern: string, text: string, replacement: string, flags: string = "") -> string
     let reg = compile_regex(pattern, flags)
     return replace(reg, text, replacement)
@@ -258,6 +297,9 @@ end
 ##
 ## ### Returns
 ## The resulting string with all occurrences replaced.
+##
+## Requires the `oneliners` feature (default-on).
+@cfg(feature = "oneliners")
 pub function replace_all_pattern(pattern: string, text: string, replacement: string, flags: string = "") -> string
     let reg = compile_regex(pattern, flags)
     return replace_all(reg, text, replacement)
@@ -273,6 +315,9 @@ end
 ##
 ## ### Returns
 ## Array of segment strings.
+##
+## Requires the `oneliners` feature (default-on).
+@cfg(feature = "oneliners")
 pub function split_pattern(pattern: string, text: string, limit: int = -1, flags: string = "") -> array
     let reg = compile_regex(pattern, flags)
     return split(reg, text, limit)
@@ -290,6 +335,9 @@ end
 ## ```alya
 ## say escape("file.name*") # "file\\.name\\*"
 ## ```
+##
+## Requires the `oneliners` feature (default-on).
+@cfg(feature = "oneliners")
 pub function escape(str_val: string) -> string
     return escape_pattern(str_val)
 end
@@ -302,6 +350,9 @@ end
 ##
 ## ### Returns
 ## The named group string, or `""` when missing.
+##
+## Requires the `core` feature (default-on).
+@cfg(feature = "core")
 pub function get_named(m, name: string) -> string
     return match_named(m, name)
 end
@@ -318,6 +369,9 @@ end
 ##
 ## ### Returns
 ## `1` on match, `0` otherwise.
+##
+## Requires the `core` feature (default-on).
+@cfg(feature = "core")
 pub function Regex.is_match(self: Regex, text: string) -> int
     return is_match(self, text)
 end
@@ -330,6 +384,9 @@ end
 ##
 ## ### Returns
 ## The first `Match` instance, or null when nothing matches.
+##
+## Requires the `core` feature (default-on).
+@cfg(feature = "core")
 pub function Regex.find(self: Regex, text: string)
     return find(self, text)
 end
@@ -342,6 +399,9 @@ end
 ##
 ## ### Returns
 ## Array of `Match` instances (possibly empty).
+##
+## Requires the `core` feature (default-on).
+@cfg(feature = "core")
 pub function Regex.find_all(self: Regex, text: string) -> array
     return find_all(self, text)
 end
@@ -355,6 +415,9 @@ end
 ##
 ## ### Returns
 ## The resulting string with the first match replaced.
+##
+## Requires the `replace` feature (default-on).
+@cfg(feature = "replace")
 pub function Regex.replace(self: Regex, text: string, replacement: string) -> string
     return replace(self, text, replacement)
 end
@@ -368,6 +431,9 @@ end
 ##
 ## ### Returns
 ## The resulting string with all matches replaced.
+##
+## Requires the `replace` feature (default-on).
+@cfg(feature = "replace")
 pub function Regex.replace_all(self: Regex, text: string, replacement: string) -> string
     return replace_all(self, text, replacement)
 end
@@ -381,6 +447,9 @@ end
 ##
 ## ### Returns
 ## Array of segment strings.
+##
+## Requires the `split` feature (default-on).
+@cfg(feature = "split")
 pub function Regex.split(self: Regex, text: string, limit: int = -1) -> array
     return split(self, text, limit)
 end

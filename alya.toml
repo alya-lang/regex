@@ -12,6 +12,25 @@ keywords = ["alya", "alya-lang", "package", "regex", "regexp", "pattern", "match
 
 [dependencies]
 
+# Optional: feature-gated API slices. Members name another feature;
+# gate the using code with `@cfg(feature = "...")` (see `src/lib.alya`
+# and `src/utils.alya`). `default` is active unless the caller passes
+# `--no-default-features`; select features explicitly via
+# `alya build/run/test/bench/install --features <a,b>`.
+[features]
+default = ["core", "replace", "split", "oneliners", "unicode"]
+core = []
+# Substitution works on compiled patterns, so it pulls the kernel in.
+replace = ["core"]
+# Tokenization works on compiled patterns, so it pulls the kernel in.
+split = ["core"]
+# One-liners compose compilation (core), substitution (replace) and
+# tokenization (split); enabling them pulls those slices in.
+oneliners = ["core", "replace", "split"]
+# Multilingual case folding upgrades matching; the engine keeps
+# ASCII-only folding without it, so slim builds still match.
+unicode = ["core"]
+
 # [lint]
 # disabled_rules = []
 # exclude = []

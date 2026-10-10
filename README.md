@@ -44,7 +44,7 @@ High-performance, pure Alya regular expression engine with linear-time matching,
 
 ```
 regex/
-├── alya.toml               # Package manifest
+├── alya.toml               # Package manifest with [features] and metadata
 ├── README.md               # Package documentation
 ├── src/
 │   ├── lib.alya            # Public API facade & convenience functions
@@ -79,6 +79,28 @@ Or install it directly using the Alya package CLI:
 ```bash
 alya add regex --git https://github.com/alya-lang/regex --branch main
 alya install
+```
+
+### Package Features
+
+| Feature | Default | Description |
+|:---|:---:|:---|
+| `core` | ✅ | Matching kernel (`compile`, `is_match`, `find`, `find_all`, `get_named`). |
+| `replace` | ✅ | Substitution (`replace`, `replace_all`; implies `core`). |
+| `split` | ✅ | Tokenization (`split`; implies `core`). |
+| `oneliners` | ✅ | Pattern one-liners (`test`, `find_pattern`, `escape`, ...; implies `core`, `replace`, `split`). |
+| `unicode` | ✅ | Multilingual case folding (`to_lower_string`, ...; implies `core`). |
+
+Engine internals (parser, compiler, VM) always compile; without `unicode` the engine keeps matching with ASCII-only case folding.
+
+```bash
+# Full build (default)
+alya install
+alya test
+
+# Slim build (no regex API; engine helpers become unavailable)
+alya install --no-default-features
+alya test --no-default-features
 ```
 
 ---

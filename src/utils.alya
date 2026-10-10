@@ -205,6 +205,9 @@ end
 ## ```alya
 ## say to_lower_utf8_pair(196, 158) # [196, 159]
 ## ```
+##
+## Requires the `unicode` feature (default-on).
+@cfg(feature = "unicode")
 pub function to_lower_utf8_pair(b1: int, b2: int) -> array
     # Latin-1 Supplement (0xC3 = 195) - French, German, Spanish, Scandinavian, Portuguese...
     # Ä/ä (132->164), É/é (137->169), Ñ/ñ (145->177), Ö/ö (150->182), Ü/ü (156->188), Ç/ç (135->167)...
@@ -266,6 +269,14 @@ pub function to_lower_utf8_pair(b1: int, b2: int) -> array
     return [b1, b2]
 end
 
+## ASCII-only fallback used when the `unicode` feature is off.
+## Multibyte pairs pass through unfolded; the engine keeps matching
+## with single-byte case folding only.
+@cfg(not(feature = "unicode"))
+pub function to_lower_utf8_pair(b1: int, b2: int) -> array
+    return [to_lower_code(b1), b2]
+end
+
 ## Converts a single character to lowercase.
 ##
 ## ### Parameters
@@ -273,6 +284,9 @@ end
 ##
 ## ### Returns
 ## Lowercased character string (empty input yields `""`).
+##
+## Requires the `unicode` feature (default-on).
+@cfg(feature = "unicode")
 pub function to_lower_char(ch: string) -> string
     if len(ch) == 0 return "" end
     let c = ord(ch)
@@ -295,6 +309,9 @@ end
 ## ```alya
 ## say to_lower_string("ÖĞRENCİ") # "öğrenci"
 ## ```
+##
+## Requires the `unicode` feature (default-on).
+@cfg(feature = "unicode")
 pub function to_lower_string(s: string) -> string
     let slen = len(s)
     let res = ""
@@ -322,6 +339,26 @@ pub function to_lower_string(s: string) -> string
             res += char_at(s, i)
             i += 1
         end
+    end
+    return res
+end
+
+## ASCII-only fallback used when the `unicode` feature is off.
+## Only `[A-Z]` folds; multibyte sequences pass through unchanged, so
+## the engine keeps matching with single-byte case folding only.
+@cfg(not(feature = "unicode"))
+pub function to_lower_string(s: string) -> string
+    let slen = len(s)
+    let res = ""
+    let i = 0
+    while i < slen
+        let b = ord(char_at(s, i))
+        if b >= 65 and b <= 90
+            res += chr(b + 32)
+        else
+            res += char_at(s, i)
+        end
+        i += 1
     end
     return res
 end

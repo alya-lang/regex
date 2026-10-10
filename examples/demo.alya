@@ -7,34 +7,8 @@
 
 import "../src/lib.alya" as re
 
-function main()
-    say "=========================================================="
-    say "        Alya Regular Expression (regex) Showcase          "
-    say "=========================================================="
-    say ""
-
-    # 1. Email validation
-    say "[1] Email Address Validation:"
-    let email_pattern = "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{{2,}}$"
-    let test_emails = [
-        "user.name@example.com",
-        "dev+alya@company.org",
-        "invalid-email-at-domain",
-        "@missing-user.com"
-    ]
-    let i = 0
-    while i < len(test_emails)
-        let em = test_emails[i]
-        let valid = re::test(email_pattern, em)
-        if valid == true
-            say "  [VALID]   {em}"
-        else
-            say "  [INVALID] {em}"
-        end
-        i += 1
-    end
-    say ""
-
+@cfg(feature = "core")
+function demo_core()
     # 2. Extracting SemVer components using capturing groups
     say "[2] Semantic Version Parsing with Capturing Groups:"
     let semver_reg = re::compile("^v?(\\d+)\\.(\\d+)\\.(\\d+)(?:-([a-zA-Z0-9._-]+))?$")
@@ -55,15 +29,6 @@ function main()
     end
     say ""
 
-    # 3. Data Masking (PII protection)
-    say "[3] Sensitive Information Masking (replace_all):"
-    let raw_text = "Call Alice at 555-123-4567 or Bob at 555-987-6543 for details."
-    let phone_pattern = "\\b\\d{{3}}-\\d{{3}}-(\\d{{4}})\\b"
-    let masked = re::replace_all_pattern(phone_pattern, raw_text, "***-***-$1")
-    say "  Original: {raw_text}"
-    say "  Masked:   {masked}"
-    say ""
-
     # 4. Extracting Markdown Links with find_all
     say "[4] Extracting Markdown Links:"
     let markdown = "Read our [Docs](https://alya-lang.org/docs) or visit [GitHub](https://github.com/alya-lang/alya) for source code."
@@ -81,21 +46,8 @@ function main()
     end
     say ""
 
-    # 5. Robust Token Splitting
-    say "[5] Splitting by Complex Delimiters:"
-    let csv_like = "item1;  item2,   item3 \t item4;item5"
-    let items = re::split_pattern("[,;\\s]+", csv_like)
-    let item_count = len(items)
-    say "  Input: '{csv_like}'"
-    say "  Tokens ({item_count} items):"
-    let t = 0
-    while t < len(items)
-        let tok = items[t]
-        say "    [{t}] => '{tok}'"
-        t += 1
-    end
-    # 6. Named Capture Groups & Template Replacement
-    say "[6] Named Capture Groups & Replacement:"
+    # 6. Named Capture Groups
+    say "[6] Named Capture Groups:"
     let log_pattern = "(?<ip>\\d+\\.\\d+\\.\\d+\\.\\d+)\\s+\\[(?<method>[A-Z]+)\\]\\s+(?<path>\\S+)"
     let log_line = "192.168.1.42 [GET] /api/v1/users"
     let log_m = re::find(re::compile(log_pattern), log_line)
@@ -108,8 +60,6 @@ function main()
         say "  Method:    {log_method}"
         say "  Path:      {log_path}"
     end
-    let reformatted = re::replace(re::compile(log_pattern), log_line, "$<method> request from $<ip> to $<path>")
-    say "  Reformat:  {reformatted}"
     say ""
 
     # 7. Lookaround Assertions
@@ -141,7 +91,81 @@ function main()
         ti += 1
     end
     say ""
+end
 
+@cfg(not(feature = "core"))
+function demo_core()
+end
+
+@cfg(feature = "replace")
+function demo_replace()
+    # 6b. Named template replacement
+    say "[6b] Named Capture Groups & Replacement:"
+    let log_pattern = "(?<ip>\\d+\\.\\d+\\.\\d+\\.\\d+)\\s+\\[(?<method>[A-Z]+)\\]\\s+(?<path>\\S+)"
+    let log_line = "192.168.1.42 [GET] /api/v1/users"
+    let reformatted = re::replace(re::compile(log_pattern), log_line, "$<method> request from $<ip> to $<path>")
+    say "  Reformat:  {reformatted}"
+    say ""
+end
+
+@cfg(not(feature = "replace"))
+function demo_replace()
+end
+
+@cfg(feature = "oneliners")
+function demo_oneliners()
+    # 1. Email validation
+    say "[1] Email Address Validation:"
+    let email_pattern = "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{{2,}}$"
+    let test_emails = [
+        "user.name@example.com",
+        "dev+alya@company.org",
+        "invalid-email-at-domain",
+        "@missing-user.com"
+    ]
+    let i = 0
+    while i < len(test_emails)
+        let em = test_emails[i]
+        let valid = re::test(email_pattern, em)
+        if valid == true
+            say "  [VALID]   {em}"
+        else
+            say "  [INVALID] {em}"
+        end
+        i += 1
+    end
+    say ""
+
+    # 3. Data Masking (PII protection)
+    say "[3] Sensitive Information Masking (replace_all):"
+    let raw_text = "Call Alice at 555-123-4567 or Bob at 555-987-6543 for details."
+    let phone_pattern = "\\b\\d{{3}}-\\d{{3}}-(\\d{{4}})\\b"
+    let masked = re::replace_all_pattern(phone_pattern, raw_text, "***-***-$1")
+    say "  Original: {raw_text}"
+    say "  Masked:   {masked}"
+    say ""
+
+    # 5. Robust Token Splitting
+    say "[5] Splitting by Complex Delimiters:"
+    let csv_like = "item1;  item2,   item3 \t item4;item5"
+    let items = re::split_pattern("[,;\\s]+", csv_like)
+    let item_count = len(items)
+    say "  Input: '{csv_like}'"
+    say "  Tokens ({item_count} items):"
+    let t = 0
+    while t < len(items)
+        let tok = items[t]
+        say "    [{t}] => '{tok}'"
+        t += 1
+    end
+end
+
+@cfg(not(feature = "oneliners"))
+function demo_oneliners()
+end
+
+@cfg(feature = "unicode")
+function demo_unicode()
     # 9. Unicode Property Classes & Turkish Case-Folding
     say "[9] Unicode Properties & Turkish Case-Folding:"
     let tr_reg = re::compile("^\\p{{L}}+$")
@@ -157,6 +181,22 @@ function main()
     let ci_hit = re::is_match(ci_reg, "ÖĞRENCİ")
     say "  Case-insensitive Turkish 'öğrenci' matches 'ÖĞRENCİ': {ci_hit}"
     say ""
+end
+
+@cfg(not(feature = "unicode"))
+function demo_unicode()
+end
+
+function main()
+    say "=========================================================="
+    say "        Alya Regular Expression (regex) Showcase          "
+    say "=========================================================="
+    say ""
+
+    demo_core()
+    demo_replace()
+    demo_oneliners()
+    demo_unicode()
 
     say "All examples finished successfully!"
 end

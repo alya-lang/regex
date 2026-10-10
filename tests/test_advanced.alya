@@ -7,10 +7,8 @@
 import "std/test"
 import "../src/lib.alya" as re
 
-function main()
-    test_suite("regex Advanced Features")
-    let r = runner_new()
-
+@cfg(feature = "core")
+function test_adv_core(r)
     # ═══════════════════════════════════════════════════════════════
     # 1. Named Capture Groups
     # ═══════════════════════════════════════════════════════════════
@@ -27,14 +25,6 @@ function main()
     runner_assert_eq(r, m_py is not null, true, "python-style named capture found")
     runner_assert_str_eq(r, re::get_named(m_py, "first"), "Alan", "named capture: first")
     runner_assert_str_eq(r, re::get_named(m_py, "last"), "Turing", "named capture: last")
-
-    # Replacement with ${name}
-    let rep_named = re::replace(r_date, "Date: 2026-09-16", "${{day}}/${{month}}/${{year}}")
-    runner_assert_str_eq(r, rep_named, "Date: 16/09/2026", "named replacement with dollar-brace syntax")
-
-    # Replacement with $<name>
-    let rep_py = re::replace(r_py, "Alan Turing", "$<last>, $<first>")
-    runner_assert_str_eq(r, rep_py, "Turing, Alan", "named replacement with dollar-angle syntax")
 
     # ═══════════════════════════════════════════════════════════════
     # 2. Hex and Unicode Escapes
@@ -96,7 +86,30 @@ function main()
     let r_kname = re::compile("(?<tag>\\w+)>.*?</\\k<tag>>")
     runner_assert_eq(r, re::is_match(r_kname, "<b>bold</b>"), true, "named backreference \\k<tag> matches")
     runner_assert_eq(r, re::is_match(r_kname, "<b>bold</i>"), false, "named backreference \\k<tag> rejects mismatch")
+end
 
+@cfg(not(feature = "core"))
+function test_adv_core(r)
+end
+
+@cfg(feature = "replace")
+function test_adv_replace(r)
+    # Named replacement with ${name} and $<name> templates
+    let r_date = re::compile("(?<year>\\d{{4}})-(?<month>\\d{{2}})-(?<day>\\d{{2}})")
+    let rep_named = re::replace(r_date, "Date: 2026-09-16", "${{day}}/${{month}}/${{year}}")
+    runner_assert_str_eq(r, rep_named, "Date: 16/09/2026", "named replacement with dollar-brace syntax")
+
+    let r_py = re::compile("(?P<first>\\w+)\\s+(?P<last>\\w+)")
+    let rep_py = re::replace(r_py, "Alan Turing", "$<last>, $<first>")
+    runner_assert_str_eq(r, rep_py, "Turing, Alan", "named replacement with dollar-angle syntax")
+end
+
+@cfg(not(feature = "replace"))
+function test_adv_replace(r)
+end
+
+@cfg(feature = "unicode")
+function test_adv_unicode(r)
     # ═══════════════════════════════════════════════════════════════
     # 5. Unicode Property Classes & Turkish Case-Folding
     # ═══════════════════════════════════════════════════════════════
@@ -121,6 +134,19 @@ function main()
 
     let r_tr_o = re::compile("öğrenci", "i")
     runner_assert_eq(r, re::is_match(r_tr_o, "ÖĞRENCİ"), true, "Turkish case-folding: öğrenci == ÖĞRENCİ")
+end
+
+@cfg(not(feature = "unicode"))
+function test_adv_unicode(r)
+end
+
+function main()
+    test_suite("regex Advanced Features")
+    let r = runner_new()
+
+    test_adv_core(r)
+    test_adv_replace(r)
+    test_adv_unicode(r)
 
     let failed = runner_summary(r)
     if failed > 0

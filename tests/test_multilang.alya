@@ -4,10 +4,8 @@
 import "std/test"
 import "../src/lib.alya" as re
 
-function main()
-    test_suite("regex Global Multilingual & Unicode Test Suite")
-    let r = runner_new()
-
+@cfg(feature = "unicode")
+function test_multilang(r)
     # 1. German (Almanca: ä, ö, ü, ß)
     let r_de1 = re::compile("münchen", "i")
     runner_assert_eq(r, re::is_match(r_de1, "Willkommen in MÜNCHEN!"), true, "German München == MÜNCHEN")
@@ -61,6 +59,17 @@ function main()
     runner_assert_eq(r, re::is_match(r_ja, "日本の東京に行きます"), true, "Japanese matching")
     let r_ar = re::compile("مرحبا")
     runner_assert_eq(r, re::is_match(r_ar, "مرحبا بالعالم"), true, "Arabic matching")
+end
+
+@cfg(not(feature = "unicode"))
+function test_multilang(r)
+end
+
+function main()
+    test_suite("regex Global Multilingual & Unicode Test Suite")
+    let r = runner_new()
+
+    test_multilang(r)
 
     let failed = runner_summary(r)
     if failed > 0
