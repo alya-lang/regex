@@ -274,7 +274,7 @@ end
 ##
 ## ### Returns
 ## A `Match` instance on success, null when the position fails.
-pub function vm_exec_at(reg, text: string, start_pos: int, text_len: int)
+pub function vm_exec_at(reg: Regex, text: string, start_pos: int, text_len: int)
     let num_slots = (reg.num_groups + 1) * 2
     let slots = []
     let i = 0
@@ -332,7 +332,7 @@ end
 ## ```alya
 ## let m = vm_search(re, "say hi", 0)
 ## ```
-pub function vm_search(reg, text: string, start_index: int = 0)
+pub function vm_search(reg: Regex, text: string, start_index: int = 0)
     let text_len = len(text)
     if start_index > text_len
         return null
@@ -389,7 +389,7 @@ end
 ##
 ## ### Returns
 ## Array of `Match` instances (possibly empty).
-pub function vm_find_all(reg, text: string) -> array
+pub function vm_find_all(reg: Regex, text: string) -> array
     let matches = []
     let text_len = len(text)
     let pos = 0
@@ -482,7 +482,7 @@ end
 ##
 ## ### Returns
 ## The resulting string with replacements applied.
-pub function vm_replace(reg, text: string, replacement: string, is_all: int = true) -> string
+pub function vm_replace(reg: Regex, text: string, replacement: string, is_all: int = true) -> string
     let matches = []
     if is_all == true
         matches = vm_find_all(reg, text)
@@ -529,7 +529,7 @@ end
 ##
 ## ### Returns
 ## Array of segment strings.
-pub function vm_split(reg, text: string, limit: int = -1) -> array
+pub function vm_split(reg: Regex, text: string, limit: int = -1) -> array
     let matches = vm_find_all(reg, text)
     let mcnt = len(matches)
     if mcnt == 0

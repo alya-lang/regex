@@ -722,7 +722,7 @@ end
 ## let parsed = parse_regex_ast("(a+)", "")
 ## ```
 pub function parse_regex_ast(pattern: string, flags: string = "") -> array
-    let p = parser_state_new(pattern, flags)
+    let p: ParserState = parser_state_new(pattern, flags)
     let ast = _p_parse_alternation(p)
     return [ast, p.group_count, p.flag_i, p.flag_m, p.flag_s, p.named_groups, p.group_names]
 end
